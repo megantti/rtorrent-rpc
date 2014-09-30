@@ -7,10 +7,10 @@ Stability   : experimental
 
 This package can be used for communicating with RTorrent over its XML-RPC interface.
 
-As an example, you can request torrent info and upload rate:
+As an example, you can request torrent info and bandwidth usage:
 
 > result <- callCommand "localhost" 5000 $ GetTorrentInfo :*: GetUpRate :*: GetDownRate
-> case Result of 
+> case result of 
 >   Right (torrentInfo :*: uploadRate :*: downloadRate) -> ...
 where
 
@@ -20,7 +20,7 @@ where
 >>> :t uploadRate
 Int
 
-assuming you have set @scgi_port = localhost:5000@ in your .rtorrent.rc.
+assuming you have set @scgi_port = localhost:5000@ in your @.rtorrent.rc@.
 
 -}
 
@@ -59,7 +59,8 @@ callRTorrent host port calls = do
   where
     call = MethodCall "system.multicall" [C.runRTMethodCall calls]
 
--- | Call RTorrent with a certain command.
+-- | Call RTorrent with a command.
+-- This opens only one connection even when using ':*:' to combine commands.
 callCommand :: Command a => 
     HostName -- ^ Hostname
     -> Int  -- ^ Port

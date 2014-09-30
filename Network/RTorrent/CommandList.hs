@@ -14,7 +14,11 @@ module Network.RTorrent.CommandList
   ( GetUpRate (..)
   , GetDownRate (..)
   , GetTorrentInfo (..)
-  , TorrentInfo (..)
+  , module Network.RTorrent.Torrent
+  , TorrentCommand (..)
+  , start
+  , close
+  , AllTorrents (..)
   )
   where
 
@@ -22,9 +26,12 @@ import Control.Applicative
 import Control.Monad.Identity
 import Control.Monad.Error
 
+import Control.DeepSeq
+
 import Network.XmlRpc.Internals
 
 import Network.RTorrent.Commands
+import Network.RTorrent.Torrent
 
 single :: Value -> Value
 single (ValueArray [ar]) = ar
@@ -34,14 +41,8 @@ int :: Value -> Int
 int (ValueInt i) = i
 int v = error $ "Failed to match a int, got: " ++ show v
 
-bool :: Value -> Bool
-bool (ValueInt 0) = False
-bool (ValueInt 1) = True
-bool (ValueBool b) = b
-bool v = error $ "Failed to match a bool, got: " ++ show v
-
-parseValue :: XmlRpcType a => Value -> a
-parseValue = fromRight . runIdentity . runErrorT . fromValue 
+parseValue :: NFData a => XmlRpcType a => Value -> a
+parseValue = force . fromRight . runIdentity . runErrorT . fromValue 
   where
     fromRight (Right r) = r
     fromRight (Left e) = error $ "parseValue failed: " ++ e
@@ -61,55 +62,53 @@ instance Command GetDownRate where
     commandCall _ = makeRTMethodCall "get_down_rate" []
     commandValue _ = int . single . single
 
-data TorrentInfo = TorrentInfo {
-      torrentId :: String
-    , torrentName :: String
-    , torrentOpen :: Bool
-    , torrentDownRate :: Int
-    , torrentUpRate :: Int
-    , torrentSize :: Int
-    , torrentBytesLeft :: Int
-    } deriving Show
-
-instance XmlRpcType TorrentInfo where
-    toValue t = ValueArray [
-            toValue $ torrentId t
-          , toValue $ torrentName t
-          , toValue $ torrentOpen t
-          , toValue $ torrentDownRate t
-          , toValue $ torrentUpRate t
-          , toValue $ torrentSize t
-          , toValue $ torrentBytesLeft t
-        ]
-    fromValue (ValueArray (v0:v1:v2:v3:v4:v5:v6:_)) = unwrapMonad $ TorrentInfo 
-                  <$> from v0
-                  <*> from v1
-                  <*> pure (bool v2)
-                  <*> from v3
-                  <*> from v4
-                  <*> from v5
-                  <*> from v6
-      where
-        from :: (XmlRpcType a, Monad m) => Value -> WrappedMonad (ErrorT String m) a
-        from = WrapMonad . fromValue
-    fromValue _ = fail "TorrentInfo fromValue failed: expected a large enough valuearray"
-
-    getType _ = TUnknown
-
--- | Get the list of torrent infos
+-- | Get the list of torrent infos.
 data GetTorrentInfo = GetTorrentInfo
 
 instance Command GetTorrentInfo where
     type Ret GetTorrentInfo = [TorrentInfo]
     commandCall _ = makeRTMethodCall "d.multicall" $ map ValueString [
                   ""
-                , "d.local_id="
+                , "d.hash="
                 , "d.get_name="
                 , "d.is_open="
                 , "d.get_down_rate="
                 , "d.get_up_rate="
                 , "d.get_size_bytes="
                 , "d.get_left_bytes="
+                , "d.priority="
                 ]
     commandValue _ = parseValue . single . single
 
+-- | Torrent commands
+data TorrentCommand = TorrentCommand String TorrentId
+instance Command TorrentCommand where
+    type Ret TorrentCommand = () 
+    commandCall (TorrentCommand command tid) = makeRTMethodCall command [toValue tid]
+    commandValue _ _ = ()
+
+-- | Start downloading a torrent.
+start :: TorrentId -> TorrentCommand 
+start = TorrentCommand "d.start"
+
+-- | Close a torrent.
+close :: TorrentId -> TorrentCommand 
+close = TorrentCommand "d.close"
+
+-- | Execute a command on all torrents.
+-- For example 
+--
+-- > AllTorrents [close]
+-- will close all torrents.
+newtype AllTorrents = AllTorrents [TorrentId -> TorrentCommand] 
+  
+instance Command AllTorrents where
+    type Ret AllTorrents = Value
+    commandCall = makeRTMethodCall "d.multicall"
+                    . map ValueString . ("" :) 
+                    . map ((\(TorrentCommand cmd _) -> cmd ++ "=") . ($ emptyTid))
+                    . get
+      where
+        emptyTid = TorrentId ""
+        get (AllTorrents commands) = commands
+    commandValue _ = single
