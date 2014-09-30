@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, GADTs #-}
+{-# LANGUAGE TypeFamilies #-}
 
 {-|
 Module      : Commands
@@ -16,11 +16,12 @@ module Network.RTorrent.CommandList
   , GetVar (..)
   , GetTorrentInfo (..)
   , module Network.RTorrent.Torrent
-  , TorrentCommand (..)
-  , SingleParam, MultiParam
+  , TorrentCommand 
   , AllTorrents (..)
+
   , start
   , close
+  , setPriority
   )
   where
 
@@ -29,6 +30,8 @@ import Control.Monad.Identity
 import Control.Monad.Error
 
 import Control.DeepSeq
+
+import Data.Monoid
 
 import Network.XmlRpc.Internals
 
@@ -62,31 +65,43 @@ getDownRate = GetVar "get_down_rate"
 data GetVar t = GetVar String
 instance (NFData a, XmlRpcType a) => Command (GetVar a) where
     type Ret (GetVar a) = a
-    commandCall (GetVar cmd) = makeRTMethodCall cmd []
+    commandCall (GetVar cmd) = mkRTMethodCall cmd []
     commandValue _ = parseValue . single . single
 
-data SingleParam
-data MultiParam
+-- | Torrent commands.
+data TorrentCommand = TorrentCommand String [Param] TorrentId 
 
--- | Torrent commands
-data TorrentCommand a where
-    TorrentSCommand :: String -> TorrentId -> TorrentCommand SingleParam
-    TorrentMCommand :: String -> [Value] -> TorrentId -> TorrentCommand MultiParam
+data Param = 
+    PString String
+  | PInt Int
+  | PPriority Priority
 
-instance Command (TorrentCommand a) where
-    type Ret (TorrentCommand a) = Value 
-    commandCall (TorrentSCommand command tid) = makeRTMethodCall command [toValue tid]
-    commandCall (TorrentMCommand command params tid) = makeRTMethodCall command (toValue tid : params)
+instance Show Param where
+    show (PString str) = show str
+    show (PInt i) = show i
+    show (PPriority p) = show (fromEnum p)
+
+instance XmlRpcType Param where
+    toValue (PString str) = toValue str
+    toValue (PInt i) = toValue i
+    toValue (PPriority p) = toValue p
+
+    fromValue = fail "No fromValue for Params"
+    getType _ = TUnknown
+
+instance Command TorrentCommand where
+    type Ret TorrentCommand = Value 
+    commandCall (TorrentCommand command params tid) = 
+        mkRTMethodCall command (toValue tid : map toValue params)
 
     commandValue _ = single
-
 
 -- | Get the list of torrent infos.
 data GetTorrentInfo = GetTorrentInfo
 
 instance Command GetTorrentInfo where
     type Ret GetTorrentInfo = [TorrentInfo]
-    commandCall _ = makeRTMethodCall "d.multicall" $ map ValueString [
+    commandCall _ = mkRTMethodCall "d.multicall" $ map ValueString [
                   ""
                 , "d.hash="
                 , "d.get_name="
@@ -100,27 +115,45 @@ instance Command GetTorrentInfo where
     commandValue _ = parseValue . single . single
 
 -- | Start downloading a torrent.
-start :: TorrentId -> TorrentCommand SingleParam
-start = TorrentSCommand "d.start"
+start :: TorrentId -> TorrentCommand 
+start = TorrentCommand "d.start" []
 
 -- | Close a torrent.
-close :: TorrentId -> TorrentCommand SingleParam
-close = TorrentSCommand "d.close" 
+close :: TorrentId -> TorrentCommand 
+close = TorrentCommand "d.close" []
+
+-- | Set the download priority of a torrent.
+setPriority :: Priority -> TorrentId -> TorrentCommand 
+setPriority pr = TorrentCommand "d.priority.set" [PPriority pr]
 
 -- | Execute a command on all torrents.
 -- For example 
 --
--- > AllTorrents [close]
--- will close all torrents.
-newtype AllTorrents = AllTorrents [TorrentId -> TorrentCommand SingleParam] 
+-- > AllTorrents [close, setPriority PriorityNormal]
+-- will close all torrents and set their priority to normal.
+newtype AllTorrents = AllTorrents [TorrentId -> TorrentCommand] 
+
+instance Monoid AllTorrents where
+    mempty = AllTorrents []
+    (AllTorrents as) `mappend` (AllTorrents bs) = AllTorrents (as ++ bs)
   
 instance Command AllTorrents where
     type Ret AllTorrents = Value
-    commandCall = makeRTMethodCall "d.multicall"
+    commandCall = mkRTMethodCall "d.multicall"
                     . map ValueString . ("" :) 
-                    . map ((\(TorrentSCommand cmd _) -> cmd ++ "=") . ($ emptyTid))
+                    . map ((\(TorrentCommand cmd params _) -> cmd ++ "=" 
+                                                                  ++ makeList params) 
+                          . ($ emptyTid))
                     . get
       where
         emptyTid = TorrentId ""
         get (AllTorrents commands) = commands
+
+        makeList :: Show a => [a] -> String
+        makeList params = ('{' :) . go params $ "}"
+          where
+            go :: Show a => [a] -> ShowS
+            go [x] = shows x 
+            go (x:xs) = shows x . (',' :) . go xs
+            go [] = id
     commandValue _ = single

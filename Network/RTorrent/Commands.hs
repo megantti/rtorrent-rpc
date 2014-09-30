@@ -15,7 +15,7 @@ module Network.RTorrent.Commands (
     , Command (Ret, commandCall, commandValue) 
     , RTMethodCall
     , runRTMethodCall
-    , makeRTMethodCall
+    , mkRTMethodCall
     , MultiCommand
     , mkMultiCommand
 ) where
@@ -88,10 +88,10 @@ runRTMethodCall :: RTMethodCall -> Value
 runRTMethodCall (RTMethodCall v) = v
 
 -- | Make a command that should be used when defining 'commandCall'.
-makeRTMethodCall :: String -- ^ The name of the method (i.e. get_up_rate)
+mkRTMethodCall :: String -- ^ The name of the method (i.e. get_up_rate)
         -> [Value] -- ^ List of parameters
         -> RTMethodCall
-makeRTMethodCall name params = RTMethodCall $ ValueArray [ValueStruct 
+mkRTMethodCall name params = RTMethodCall $ ValueArray [ValueStruct 
                         [ ("methodName", ValueString name)
                         , ("params", ValueArray params)]]
 

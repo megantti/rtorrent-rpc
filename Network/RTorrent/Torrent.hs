@@ -10,7 +10,7 @@ Stability   : experimental
 module Network.RTorrent.Torrent
   ( TorrentInfo (..)
   , TorrentId (..)
-  , TorrentPriority (..)
+  , Priority (..)
   )
   where
 
@@ -37,31 +37,31 @@ data TorrentInfo = TorrentInfo {
     , torrentUpRate :: Int
     , torrentSize :: Int
     , torrentBytesLeft :: Int
-    , torrentPriority :: TorrentPriority
+    , torrentPriority :: Priority
     } deriving Show
 
-data TorrentPriority = 
+data Priority = 
       PriorityOff
     | PriorityLow
     | PriorityNormal
     | PriorityHigh
   deriving (Show, Eq, Ord)
 
-instance NFData TorrentPriority
+instance NFData Priority
 
-instance Enum TorrentPriority where
+instance Enum Priority where
     toEnum 0 = PriorityOff
     toEnum 1 = PriorityLow
     toEnum 2 = PriorityNormal
     toEnum 3 = PriorityHigh
-    toEnum i = error $ "toEnum :: Int -> TorrentPriority failed, got : " ++ show i
+    toEnum i = error $ "toEnum :: Int -> Priority failed, got : " ++ show i
 
     fromEnum PriorityOff = 0
     fromEnum PriorityLow = 1
     fromEnum PriorityNormal = 2
     fromEnum PriorityHigh = 3
 
-instance XmlRpcType TorrentPriority where
+instance XmlRpcType Priority where
     toValue = toValue . fromEnum
     fromValue v = return . toEnum =<< fromValue v
     getType _ = TInt
