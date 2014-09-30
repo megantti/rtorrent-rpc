@@ -9,14 +9,13 @@ This package can be used for communicating with RTorrent over its XML-RPC interf
 
 As an example, you can request torrent info and bandwidth usage:
 
-> result <- callCommand "localhost" 5000 $ GetTorrentInfo :*: getUpRate :*: getDownRate
+> result <- callCommand "localhost" 5000 $ getAllTorrentInfo :*: getUpRate :*: getDownRate
 > case result of 
 >   Right (torrentInfo :*: uploadRate :*: downloadRate) -> ...
 where
 
 >>> :t torrentInfo
 [TorrentInfo]
-
 >>> :t uploadRate
 Int
 
@@ -25,9 +24,10 @@ assuming you have set @scgi_port = localhost:5000@ in your @.rtorrent.rc@.
 -}
 
 module Network.RTorrent.RPC (
-      callCommand 
-    , module Network.RTorrent.Commands 
-    , module Network.RTorrent.CommandList
+      module Network.RTorrent.CommandList
+    , callCommand 
+
+    , Command (Ret)
     ) where
 
 import Control.Applicative
@@ -40,10 +40,7 @@ import qualified Data.ByteString.Lazy as LB
 import Network
 import Network.XmlRpc.Internals
 
-import Network.RTorrent.Commands (Command (Ret)
-                                 , (:*:) (..)
-                                 , MultiCommand
-                                 , mkMultiCommand)
+import Network.RTorrent.Commands (Command (Ret))
 import qualified Network.RTorrent.Commands as C
 import Network.RTorrent.CommandList
 import Network.RTorrent.SCGI
