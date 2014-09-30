@@ -9,7 +9,7 @@ This package can be used for communicating with RTorrent over its XML-RPC interf
 
 As an example, you can request torrent info and bandwidth usage:
 
-> result <- callCommand "localhost" 5000 $ GetTorrentInfo :*: GetUpRate :*: GetDownRate
+> result <- callCommand "localhost" 5000 $ GetTorrentInfo :*: getUpRate :*: getDownRate
 > case result of 
 >   Right (torrentInfo :*: uploadRate :*: downloadRate) -> ...
 where
@@ -40,7 +40,10 @@ import qualified Data.ByteString.Lazy as LB
 import Network
 import Network.XmlRpc.Internals
 
-import Network.RTorrent.Commands (Command (Ret), (:*:)(..))
+import Network.RTorrent.Commands (Command (Ret)
+                                 , (:*:) (..)
+                                 , MultiCommand
+                                 , mkMultiCommand)
 import qualified Network.RTorrent.Commands as C
 import Network.RTorrent.CommandList
 import Network.RTorrent.SCGI

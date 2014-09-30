@@ -19,7 +19,7 @@ import Control.DeepSeq
 import Control.Monad.Error
 import Network.XmlRpc.Internals
 
--- | A newtype wrapper for torrent identifiers
+-- | A newtype wrapper for torrent identifiers.
 newtype TorrentId = TorrentId { 
       getTorrentId :: String 
     } deriving Show

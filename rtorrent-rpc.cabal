@@ -15,7 +15,7 @@ cabal-version:       >=1.10
 library
   exposed-modules:     Network.RTorrent, Network.RTorrent.RPC, Network.RTorrent.CommandList, Network.RTorrent.Commands, Network.RTorrent.Torrent
   other-modules:       Network.RTorrent.SCGI
-  other-extensions:    TypeFamilies, OverloadedStrings, TypeOperators, ScopedTypeVariables
+  other-extensions:    TypeFamilies, OverloadedStrings, TypeOperators, ScopedTypeVariables, GADTs
   build-depends:       base >=4.7 && <4.8, mtl >=2.1, bytestring >=0.10 && <0.11, network >=2.6, haxr >=3000.10 && <3000.11, blaze-builder >=0.3 && <0.4, blaze-textual >=0.2 && <0.3, attoparsec >=0.12 && <0.13, tagged >=0.7 && <0.8, deepseq >= 1.3.0.0
   -- hs-source-dirs:      
   default-language:    Haskell2010
