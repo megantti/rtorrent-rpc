@@ -43,12 +43,6 @@ import Network.RTorrent.Commands
 import Network.RTorrent.Torrent
 import Network.RTorrent.Priority
 
-bool :: Value -> Bool
-bool (ValueInt 0) = False
-bool (ValueInt 1) = True
-bool (ValueBool b) = b
-bool v = error $ "Failed to match a bool, got: " ++ show v
-
 -- | Get a TorrentInfo for a torrent.
 getTorrentInfo :: TorrentId -> TorrentAction TorrentInfo
 getTorrentInfo = runActionB $ TorrentInfo

@@ -24,6 +24,7 @@ module Network.RTorrent.Commands (
     , mkRTMethodCall
     , parseSingle
     , getArray, single
+    , bool
 ) where
 
 import Control.DeepSeq
@@ -69,6 +70,12 @@ getArray _ = error "getArray in Network.RTorrent.Commands failed"
 single :: Value -> Value
 single (ValueArray [ar]) = ar
 single v = error $ "Failed to match a singleton array, got: " ++ show v
+
+bool :: Value -> Bool
+bool (ValueInt 0) = False
+bool (ValueInt 1) = True
+bool (ValueBool b) = b
+bool v = error $ "Failed to match a bool, got: " ++ show v
 
 parseValue :: (NFData a, XmlRpcType a) => Value -> a
 parseValue = force . fromRight . runIdentity . runErrorT . fromValue 

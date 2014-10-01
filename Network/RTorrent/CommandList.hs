@@ -14,6 +14,7 @@ module Network.RTorrent.CommandList
   ( module Network.RTorrent.Torrent
   , module Network.RTorrent.Priority
   , module Network.RTorrent.File
+  , module Network.RTorrent.Peer
   , module Network.RTorrent.TorrentCommand
 
   -- * Functions for global variables
@@ -53,12 +54,12 @@ module Network.RTorrent.CommandList
 import Control.DeepSeq
 import Network.XmlRpc.Internals
 
-import qualified Data.ByteString as BS
-import Data.ByteString.Base64
+import Data.ByteString (ByteString)
 
 import Network.RTorrent.Action
 import Network.RTorrent.Commands
 import Network.RTorrent.File
+import Network.RTorrent.Peer
 import Network.RTorrent.Torrent
 import Network.RTorrent.Priority
 import Network.RTorrent.TorrentCommand
@@ -113,7 +114,7 @@ loadTorrent :: String -- ^ A path / URL
 loadTorrent path = Global parseSingle [ValueString path] "load"
 
 -- | Load a torrent file.
-loadTorrentRaw :: BS.ByteString -- ^ A torrent file as data
+loadTorrentRaw :: ByteString -- ^ A torrent file as data
         -> Global Int
 loadTorrentRaw torrentData = Global parseSingle [ValueBase64 torrentData] "load_raw"
 
@@ -123,7 +124,7 @@ loadStartTorrent :: String -- ^ A path / URL
 loadStartTorrent path = Global parseSingle [ValueString path] "load_start"
 
 -- | Load a torrent file and start downloading it.
-loadStartTorrentRaw :: BS.ByteString -- ^ A torrent file as data
+loadStartTorrentRaw :: ByteString -- ^ A torrent file as data
         -> Global Int
 loadStartTorrentRaw torrentData = Global parseSingle [ValueBase64 torrentData] "load_raw_start"
     
