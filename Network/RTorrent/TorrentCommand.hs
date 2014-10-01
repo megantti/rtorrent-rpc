@@ -36,8 +36,6 @@ module Network.RTorrent.TorrentCommand (
 
 import Control.Applicative
 
-import Network.XmlRpc.Internals
-
 import Network.RTorrent.Action
 import Network.RTorrent.Commands
 import Network.RTorrent.Torrent

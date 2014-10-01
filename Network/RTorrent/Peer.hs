@@ -46,7 +46,8 @@ import Network.XmlRpc.Internals
 
 import Data.List.Split (splitOn)
 
-data PeerId = PeerId !TorrentId !String deriving Show
+data PeerId = PeerId !TorrentId !String 
+    deriving Show
 
 instance XmlRpcType PeerId where
     toValue (PeerId tid i) = ValueString $ getTorrentId tid ++ ":p" ++ i

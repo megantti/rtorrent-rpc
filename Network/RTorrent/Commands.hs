@@ -27,6 +27,7 @@ module Network.RTorrent.Commands (
     , bool
 ) where
 
+import Control.Applicative
 import Control.DeepSeq
 import Control.Monad.Error
 import Control.Monad.Identity
@@ -67,8 +68,22 @@ getArray :: Value -> [Value]
 getArray (ValueArray ar) = ar
 getArray _ = error "getArray in Network.RTorrent.Commands failed"
 
+-- | Extract a value from a singleton array.
 single :: Value -> Value
 single (ValueArray [ar]) = ar
+single v@(ValueStruct vars) = maybe 
+    err
+    (\(c, s) -> error $ "Server returned error " ++ show (int c) ++ 
+                                ": " ++ str s)
+    (liftA2 (,) (lookup "faultCode" vars)
+                (lookup "faultString" vars))
+  where
+    int (ValueInt i) = i
+    int _ = err
+    str (ValueString s) = s
+    str _ = err
+    err :: a
+    err = error $ "Failed to match a singleton array, got: " ++ show v
 single v = error $ "Failed to match a singleton array, got: " ++ show v
 
 bool :: Value -> Bool
@@ -83,6 +98,7 @@ parseValue = force . fromRight . runIdentity . runErrorT . fromValue
     fromRight (Right r) = r
     fromRight (Left e) = error $ "parseValue failed: " ++ e
 
+-- | Parse a value wrapped in two singleton arrays.
 parseSingle :: (XmlRpcType a, NFData a) => Value -> a
 parseSingle = parseValue . single . single
 
