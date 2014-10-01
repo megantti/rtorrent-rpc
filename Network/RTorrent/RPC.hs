@@ -26,6 +26,7 @@ assuming you have set @scgi_port = localhost:5000@ in your @.rtorrent.rc@.
 module Network.RTorrent.RPC (
       module Network.RTorrent.CommandList
     , callCommand 
+    , callLocal
 
     , Command (Ret)
     ) where
@@ -60,7 +61,7 @@ callRTorrent host port calls = do
     call = MethodCall "system.multicall" [C.runRTMethodCall calls]
 
 -- | Call RTorrent with a command.
--- This opens only one connection even when using ':*:' to combine commands.
+-- Only one connection is opened even when using ':*:' to combine commands.
 callCommand :: Command a => 
     HostName -- ^ Hostname
     -> Int  -- ^ Port
@@ -71,3 +72,7 @@ callCommand host port command = handleException $ runErrorT . (>>= lift . evalua
   where
     handleException f = catch f (\e -> return . Left . show $ (e :: SomeException))
 
+-- | 
+-- > callLocal = callCommand "localhost" 5000
+callLocal :: Command a => a -> IO (Either String (Ret a))
+callLocal = callCommand "localhost" 5000
