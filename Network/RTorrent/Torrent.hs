@@ -13,9 +13,7 @@ module Network.RTorrent.Torrent
   )
   where
 
-import Control.Applicative
 import Control.DeepSeq
-import Control.Monad.Error
 import Network.XmlRpc.Internals
 
 import Network.RTorrent.Priority
@@ -41,17 +39,21 @@ data TorrentInfo = TorrentInfo {
     , torrentUpRate :: Int
     , torrentSize :: Int
     , torrentBytesLeft :: Int
+    , torrentPath :: String
+    , torrentDir :: String
     , torrentTorrentPriority :: TorrentPriority
     } deriving Show
 
 instance NFData TorrentInfo where
-    rnf (TorrentInfo i a0 a1 a2 a3 a4 a5 a6) = 
-        rnf (getTorrentId i) `seq`
+    rnf (TorrentInfo i a0 a1 a2 a3 a4 a5 a6 a7 a8) = 
+        rnf i  `seq`
         rnf a0 `seq`
         rnf a1 `seq`
         rnf a2 `seq`
         rnf a3 `seq`
         rnf a4 `seq`
         rnf a5 `seq`
-        rnf a6
+        rnf a6 `seq`
+        rnf a7 `seq`
+        rnf a8
 

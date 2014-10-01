@@ -10,6 +10,13 @@ Stability   : experimental
 module Network.RTorrent.TorrentCommand (
     start
   , close
+  , erase
+  , getTorrentInfo
+  , getAllTorrentInfo
+
+  , allTorrents 
+
+  -- * Functions for single variables
   , setTorrentPriority
   , getTorrentPriority
   , getHash 
@@ -19,11 +26,9 @@ module Network.RTorrent.TorrentCommand (
   , getSizeBytes
   , getLeftBytes
   , getName
+  , getPath
+  , getTorrentDir
 
-  , getTorrentInfo
-
-  , allTorrents 
-  , getAllTorrentInfo
 ) where
 
 import Network.XmlRpc.Internals
@@ -39,7 +44,7 @@ bool (ValueInt 1) = True
 bool (ValueBool b) = b
 bool v = error $ "Failed to match a bool, got: " ++ show v
 
--- | Get the list of torrent infos.
+-- | Get a TorrentInfo for a torrent.
 getTorrentInfo :: TorrentId -> TorrentAction TorrentInfo
 getTorrentInfo = fmap (fmap mkInfo) action
   where
@@ -50,6 +55,8 @@ getTorrentInfo = fmap (fmap mkInfo) action
          <+> getTorrentUpRate
          <+> getSizeBytes
          <+> getLeftBytes
+         <+> getPath
+         <+> getTorrentDir
          <+> getTorrentPriority
     mkInfo   ( hash 
            :*: name
@@ -58,8 +65,10 @@ getTorrentInfo = fmap (fmap mkInfo) action
            :*: up
            :*: size
            :*: left
+           :*: pt
+           :*: dir
            :*: pr ) 
-        = TorrentInfo hash name open down up size left pr
+        = TorrentInfo hash name open down up size left pt dir pr
     
 -- | Start downloading a torrent.
 start :: TorrentId -> TorrentAction Int
@@ -68,6 +77,10 @@ start = simpleAction "d.start" []
 -- | Close a torrent. 
 close :: TorrentId -> TorrentAction Int
 close = simpleAction "d.close" []
+
+-- | Erase a torrent. 
+erase :: TorrentId -> TorrentAction Int
+erase = simpleAction "d.erase" []
 
 -- | Set the download priority of a torrent.
 setTorrentPriority :: TorrentPriority -> TorrentId -> TorrentAction Int
@@ -78,6 +91,12 @@ getHash = simpleAction "d.hash" []
 
 getName :: TorrentId -> TorrentAction String
 getName = simpleAction "d.get_name" []
+
+getPath :: TorrentId -> TorrentAction String
+getPath = simpleAction "d.get_base_path" []
+
+getTorrentDir :: TorrentId -> TorrentAction String
+getTorrentDir = simpleAction "d.get_directory" []
 
 getIsOpen :: TorrentId -> TorrentAction Bool
 getIsOpen = Action [("d.is_open", [])] (bool . single . single)
@@ -105,5 +124,6 @@ getTorrentPriority = simpleAction "d.priority" []
 allTorrents :: (TorrentId -> TorrentAction a) -> AllAction TorrentId a
 allTorrents = AllAction (TorrentId "") "d.multicall"
 
+-- | A command for getting torrent info for all torrents.
 getAllTorrentInfo :: AllAction TorrentId TorrentInfo
 getAllTorrentInfo = allTorrents getTorrentInfo
