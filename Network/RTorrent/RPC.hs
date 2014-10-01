@@ -21,6 +21,32 @@ Int
 
 assuming you have set @scgi_port = localhost:5000@ in your @.rtorrent.rc@.
 
+As a more complete example, the following code finds all files that are over
+100 megabytes, prints them along with the torrent they belong to and 
+sets their priority to high.
+
+>import Network.RTorrent
+>
+>import Control.Monad
+>import Data.Monoid (mconcat)
+>
+>main :: IO ()
+>main = do
+>    Right torrents <- callLocal . allTorrents $ getName <+> allFiles (getFilePath <+> getFileSizeBytes)
+>    let largeFiles = 
+>                filter (\(_ :*: _ :*: _ :*: size) -> size > 10^8)
+>                . concatMap (\(tName :*: fileList) -> map ((:*:) tName) fileList) 
+>                $ torrents
+>    putStrLn "Large files:"
+>    forM_ largeFiles $ \(torrent :*: _ :*: fPath :*: _) ->
+>        putStrLn $ "\t" ++ torrent ++ ": " ++ fPath
+>    _ <- callLocal 
+>        . mconcat
+>        . map (\(_ :*: fid :*: _ :*: _) -> 
+>              mkMultiCommand $ setFilePriority FilePriorityHigh fid) 
+>        $ largeFiles
+>    return ()
+
 -}
 
 module Network.RTorrent.RPC (
