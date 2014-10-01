@@ -10,7 +10,7 @@ Stability   : experimental
 
 module Network.RTorrent.Action (
       Action (..)
-    , ActionM (..)
+    , ActionB (..)
     , Param (..)
     , simpleAction
 
@@ -28,8 +28,7 @@ import Control.DeepSeq
 import Control.Applicative
 
 import Data.Monoid
-import Data.Foldable (Foldable)
-import qualified Data.Foldable as F
+import Data.Traversable
 
 import Network.XmlRpc.Internals
 import Network.RTorrent.Torrent
@@ -44,8 +43,8 @@ data Action i a
 
 type TorrentAction = Action TorrentId
 
--- | Wrapper to get a monoid instance.
-newtype ActionM i a = ActionM { runActionM :: i -> Action i a} 
+-- | Wrapper to get monoid and applicative instances.
+newtype ActionB i a = ActionB { runActionB :: i -> Action i a} 
 
 -- | A simple action that can be used when constructing new ones.
 -- 
@@ -61,8 +60,23 @@ simpleAction cmd params = Action [(cmd, params)] parseSingle
 instance Functor (Action i) where
     fmap f (Action cmds p fid) = Action cmds (f . p) fid
 
-instance Functor (ActionM i) where
-    fmap f = ActionM . (fmap f .) . runActionM
+instance Functor (ActionB i) where
+    fmap f = ActionB . (fmap f .) . runActionB
+
+instance Applicative (ActionB a) where
+    pure a = ActionB $ Action [] (const a)  
+    (ActionB a) <*> (ActionB b) = ActionB $ \tid -> let 
+        parse arr = parseA (ValueArray valsA) 
+                    $ parseB (ValueArray valsB) 
+          where (valsA, valsB) = splitAt len $ getArray arr
+        len = length cmdsA
+        Action cmdsA parseA _ = a tid
+        Action cmdsB parseB _ = b tid
+      in Action (cmdsA ++ cmdsB) parse tid
+
+instance Monoid a => Monoid (ActionB i a) where
+    mempty = pure mempty
+    mappend = liftA2 mappend  
 
 instance XmlRpcType i => Command (Action i a) where
     type Ret (Action i a) = a
@@ -101,38 +115,13 @@ instance XmlRpcType Param where
     getType _ = TUnknown
 
 -- | Sequence multiple actions, for example with @f = []@.
---
--- 'Applicative' is a bit too strong, as @pure@ would be enough.
-sequenceActions :: (Applicative f, Monoid (f a), Foldable f) =>
-             f (i -> Action i a)
-             -> i
-             -> Action i (f a)
-sequenceActions = runActionM . F.foldMap (ActionM . (fmap . fmap) pure)
-
-instance Monoid a => Monoid (ActionM i a) where
-    mempty = ActionM $ Action [] mempty
-    (ActionM a) `mappend` (ActionM b) = ActionM $ \tid -> 
-      let
-        parse arr = parseA (ValueArray $ take len vals) 
-          `mappend` parseB (ValueArray $ drop len vals)
-          where len = length cmdsA
-                vals = getArray arr
-        Action cmdsA parseA _ = a tid
-        Action cmdsB parseB _ = b tid
-      in Action (cmdsA ++ cmdsB) parse tid
-
+sequenceActions :: Traversable f => f (i -> Action i a) -> i -> Action i (f a)
+sequenceActions = runActionB . traverse ActionB
 
 infixr 6 <+>
 -- | Combine two actions to get a new one.
 (<+>) :: (i -> Action i a) -> (i -> Action i b) -> i -> Action i (a :*: b)
-(a <+> b) tid = Action (cmdsA ++ cmdsB) parse tid
-  where
-    parse arr =     parseA (ValueArray $ take len vals) 
-                :*: parseB (ValueArray $ drop len vals) 
-      where len = length cmdsA
-            vals = getArray arr
-    Action cmdsA parseA _ = a tid
-    Action cmdsB parseB _ = b tid
+a <+> b = runActionB $ (:*:) <$> ActionB a <*> ActionB b
 
 data AllAction i a = AllAction i String (i -> Action i a)
 
