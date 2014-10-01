@@ -6,6 +6,7 @@ license:             MIT
 license-file:        LICENSE
 author:              Kai Lindholm
 maintainer:          megantti@gmail.com
+homepage:            https://github.com/megantti/rtorrent-rpc
 -- copyright:           
 category:            Network
 build-type:          Simple
