@@ -51,7 +51,7 @@ makeRequest (Body hd bd) = res
             map (\(a, b) -> fromBS0 a <> fromBS0 b) hd
     len = BS.length hdbs
 
-parseResponse:: Parser Body
+parseResponse :: Parser Body
 parseResponse = parseBody
   where
     lineParser :: Parser ByteString

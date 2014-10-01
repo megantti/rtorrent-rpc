@@ -10,17 +10,17 @@ Stability   : experimental
 
 module Network.RTorrent.Action (
       Action (..)
+    , TorrentAction
     , ActionB (..)
-    , Param (..)
     , simpleAction
 
     , sequenceActions
-    , TorrentAction
-
-    , AllAction (..)
-
     , (<+>)
 
+    , Param (..)
+
+    -- * Internal
+    , AllAction (..)
     , allToMulti 
 ) where
 
@@ -93,6 +93,7 @@ instance XmlRpcType i => Command (Action i a) where
     commandValue (Action _ parse _) = parse
     levels (Action cmds _ _) = length cmds
 
+-- | Parameters for actions.
 data Param = 
     PString String
   | PInt Int
@@ -137,11 +138,17 @@ makeMultiCall = ("" :)
         go (x:xs) = shows x . (',' :) . go xs
         go [] = id
 
+wrapForParse :: Value -> [Value]
+wrapForParse = map ( 
+                   ValueArray 
+                 . map (ValueArray . (:[])) 
+                 . getArray) 
+               . getArray . single . single
+
 allToMulti :: AllAction i a -> TorrentId -> Action TorrentId [a]
 allToMulti (AllAction emptyId multicall action) = 
     Action [(multicall, map PString $ makeMultiCall cmds)] 
-           (map (parse . ValueArray . map (ValueArray . (:[])) . getArray) . getArray
-            . single . single)
+           (map parse . wrapForParse)
   where 
     Action cmds parse _ = action emptyId
     
@@ -155,13 +162,8 @@ instance NFData a => Command (AllAction i a) where
       where
         Action cmds _ _ = action emptyId
 
-
     commandValue (AllAction emptyId _ action) = 
-        force 
-        . map ( parse 
-            . ValueArray 
-            . map (ValueArray . (:[])) 
-            . getArray) 
-        . getArray . single . single
+        force . map parse . wrapForParse
       where
         Action _ parse _ = action emptyId
+

@@ -52,11 +52,11 @@ instance (Command a, Command b) => Command (a :*: b) where
           val :: Command c => c -> [Value]
           val = getArray . runRTMethodCall . commandCall
 
-    commandValue (a :*: b) (ValueArray xs) = (commandValue a . ValueArray $ as) 
-                                    :*: (commandValue b . ValueArray $ bs)
+    commandValue (a :*: b) (ValueArray xs) = 
+              (commandValue a . ValueArray $ as)
+          :*: (commandValue b . ValueArray $ bs)
         where
-            (as, bs) = splitAt l xs
-            l = levels a
+            (as, bs) = splitAt (levels a) xs
     commandValue _ _ = error "commandValue in Command (a :*: b) instance failed"
             
     levels (a :*: b) = levels a + levels b 
@@ -81,7 +81,8 @@ parseSingle = parseValue . single . single
 
 -- | A newtype wrapper for method calls. 
 -- 
--- You shouldn't directly use the constructor if you don't know what you are doing.
+-- You shouldn't directly use the constructor 
+-- if you don't know what you are doing.
 newtype RTMethodCall = RTMethodCall Value
     deriving Show
 
@@ -110,13 +111,15 @@ class Command a where
     levels _ = 1
 
 -- | Existential wrapper for any command.
+-- 
+-- Commands wrapped in AnyCommand won't parse their results.
 data AnyCommand where
     AnyCommand :: Command a => a -> AnyCommand
 
 instance Command AnyCommand where
     type Ret AnyCommand = Value
     commandCall (AnyCommand cmd) = commandCall cmd
-    commandValue _ = head . getArray
+    commandValue _ = single
     levels (AnyCommand cmd) = levels cmd
 
 instance Command a => Command [a] where
@@ -127,5 +130,5 @@ instance Command a => Command [a] where
     commandValue cmds = zipWith (\cmd -> commandValue cmd . ValueArray) cmds
                                        . splitPlaces (map levels cmds) 
                                        . getArray 
-    levels cmds = sum $ map levels cmds
+    levels = sum . map levels 
 

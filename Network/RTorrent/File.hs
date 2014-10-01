@@ -74,7 +74,7 @@ instance NFData File where
 
 type FileAction = Action FileId
 
--- | Run the file action on the all files that a torrent has.
+-- | Run the file action on all files that a torrent has.
 allFiles :: (FileId -> FileAction a) -> TorrentId -> TorrentAction [FileId :*: a]
 allFiles f = fmap addId . (getHash <+> allToMulti (allF f))
   where

@@ -31,6 +31,8 @@ module Network.RTorrent.TorrentCommand (
 
 ) where
 
+import Control.Applicative
+
 import Network.XmlRpc.Internals
 
 import Network.RTorrent.Action
@@ -46,29 +48,19 @@ bool v = error $ "Failed to match a bool, got: " ++ show v
 
 -- | Get a TorrentInfo for a torrent.
 getTorrentInfo :: TorrentId -> TorrentAction TorrentInfo
-getTorrentInfo = fmap (fmap mkInfo) action
+getTorrentInfo = runActionB $ TorrentInfo
+         <$> b getHash
+         <*> b getName
+         <*> b getIsOpen
+         <*> b getTorrentDownRate
+         <*> b getTorrentUpRate
+         <*> b getSizeBytes
+         <*> b getLeftBytes
+         <*> b getPath
+         <*> b getTorrentDir
+         <*> b getTorrentPriority
   where
-    action = getHash
-         <+> getName
-         <+> getIsOpen
-         <+> getTorrentDownRate
-         <+> getTorrentUpRate
-         <+> getSizeBytes
-         <+> getLeftBytes
-         <+> getPath
-         <+> getTorrentDir
-         <+> getTorrentPriority
-    mkInfo   ( hash 
-           :*: name
-           :*: open
-           :*: down
-           :*: up
-           :*: size
-           :*: left
-           :*: pt
-           :*: dir
-           :*: pr ) 
-        = TorrentInfo hash name open down up size left pt dir pr
+    b = ActionB
     
 -- | Start downloading a torrent.
 start :: TorrentId -> TorrentAction Int
@@ -92,9 +84,12 @@ getHash = simpleAction "d.hash" []
 getName :: TorrentId -> TorrentAction String
 getName = simpleAction "d.get_name" []
 
+-- | Get the absolute path to the torrent's directory or file.
 getPath :: TorrentId -> TorrentAction String
 getPath = simpleAction "d.get_base_path" []
 
+-- | Get the absolute path to the directory in which the torrent's directory or
+-- file resides.
 getTorrentDir :: TorrentId -> TorrentAction String
 getTorrentDir = simpleAction "d.get_directory" []
 
@@ -117,13 +112,14 @@ getTorrentPriority :: TorrentId -> TorrentAction TorrentPriority
 getTorrentPriority = simpleAction "d.priority" []
 
 -- | Execute a command on all torrents.
--- For example 
+-- For example the command
 --
 -- > allTorrents (setTorrentPriority TorrentPriorityNormal)
--- will will set the priority of all torrents to normal.
+-- will set the priority of all torrents to normal.
 allTorrents :: (TorrentId -> TorrentAction a) -> AllAction TorrentId a
 allTorrents = AllAction (TorrentId "") "d.multicall"
 
 -- | A command for getting torrent info for all torrents.
 getAllTorrentInfo :: AllAction TorrentId TorrentInfo
 getAllTorrentInfo = allTorrents getTorrentInfo
+
