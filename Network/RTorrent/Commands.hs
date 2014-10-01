@@ -15,9 +15,10 @@ module Network.RTorrent.Commands (
     , Command (Ret, commandCall, commandValue, levels) 
 
     -- * Multi commands
-    , MultiCommand
-    , mkMultiCommand
+    , MultiCommand (..)
 
+    , AnyCommand (..)
+    
     -- * Utils for implementation
     , RTMethodCall (..)
     , runRTMethodCall
@@ -31,6 +32,8 @@ import Data.Monoid
 import Control.DeepSeq
 import Control.Monad.Error
 import Control.Monad.Identity
+
+import Data.List.Split (splitPlaces)
 
 import Network.XmlRpc.Internals
 
@@ -110,34 +113,32 @@ class Command a where
 
 --- MultiCommands
 
-data MkCommand where
-    MkCommand :: Command a => a -> MkCommand
+-- | Existential wrapper for any command.
+data AnyCommand where
+    AnyCommand :: Command a => a -> AnyCommand
 
-instance Command MkCommand where
-    type Ret MkCommand = Value
-    commandCall (MkCommand cmd) = commandCall cmd
+instance Command AnyCommand where
+    type Ret AnyCommand = Value
+    commandCall (AnyCommand cmd) = commandCall cmd
     commandValue _ = head . getArray
-    levels (MkCommand cmd) = levels cmd
+    levels (AnyCommand cmd) = levels cmd
 
--- | A command that can be used to run multiple commands
--- without interpreting their results.
---
--- Use the monoid instance to combine multiple MultiCommands.
-newtype MultiCommand = MultiCommand [MkCommand]
+-- | A command that can be used to run multiple commands.
+data MultiCommand a = MultiCommand [a]
 
-instance Monoid MultiCommand where
+instance Monoid (MultiCommand a) where
     mempty = MultiCommand []
     (MultiCommand as) `mappend` (MultiCommand bs) = MultiCommand (as ++ bs)
 
-instance Command MultiCommand where
-    type Ret MultiCommand = Value
+instance Command a => Command (MultiCommand a) where
+    type Ret (MultiCommand a) = [Ret a]
     commandCall (MultiCommand m) = RTMethodCall . ValueArray 
                 . concatMap ( getArray 
                             . runRTMethodCall . commandCall)
                 $ m
-    commandValue _ = id
+    commandValue (MultiCommand cmds) = zipWith (\cmd -> commandValue cmd 
+                                                        . ValueArray) cmds
+                                       . splitPlaces (map levels cmds) 
+                                       . getArray 
     levels (MultiCommand cmds) = sum $ map levels cmds
-
-mkMultiCommand :: Command a => a -> MultiCommand
-mkMultiCommand = MultiCommand . (:[]) . MkCommand
 

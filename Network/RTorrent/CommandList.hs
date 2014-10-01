@@ -37,7 +37,8 @@ module Network.RTorrent.CommandList
   , simpleAction
   -- * Re-exported from "Network.RTorrent.Commands"
   , (:*:)(..)
-  , MultiCommand, mkMultiCommand
+  , MultiCommand (..)
+  , AnyCommand (..)
   )
   where
 

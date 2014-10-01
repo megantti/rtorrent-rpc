@@ -33,18 +33,20 @@ import Data.Monoid (mconcat)
 
 main :: IO ()
 main = do
-    Right torrents <- callLocal . allTorrents $ getName <+> allFiles (getFilePath <+> getFileSizeBytes)
+    Right torrents <- callLocal . allTorrents $ 
+                        getName <+> allFiles (getFilePath <+> getFileSizeBytes)
     let largeFiles = 
                 filter (\(_ :*: _ :*: _ :*: size) -> size > 10^8)
-                . concatMap (\(tName :*: fileList) -> map ((:*:) tName) fileList) 
+                . concatMap (\(tName :*: fileList) -> 
+                                map ((:*:) tName) fileList) 
                 $ torrents
     putStrLn "Large files:"
     forM_ largeFiles $ \(torrent :*: _ :*: fPath :*: _) ->
         putStrLn $ "\t" ++ torrent ++ ": " ++ fPath
     _ <- callLocal 
-        . mconcat
+        . MultiCommand
         . map (\(_ :*: fid :*: _ :*: _) -> 
-              mkMultiCommand $ setFilePriority FilePriorityHigh fid) 
-        $ largeFiles
+              setFilePriority FilePriorityHigh fid)
+          $ largeFiles
     return ()
 ```
