@@ -11,6 +11,7 @@ module Network.RTorrent.TorrentCommand (
     start
   , close
   , erase
+  , checkHash
   , getTorrentInfo
   , getAllTorrentInfo
 
@@ -28,6 +29,8 @@ module Network.RTorrent.TorrentCommand (
   , getName
   , getPath
   , getTorrentDir
+  , getRatio
+  , getFileCount
 
 ) where
 
@@ -74,6 +77,10 @@ close = simpleAction "d.close" []
 erase :: TorrentId -> TorrentAction Int
 erase = simpleAction "d.erase" []
 
+-- | Initiate a hash check for a torrent.
+checkHash :: TorrentId -> TorrentAction Int
+checkHash = simpleAction "d.check_hash" []
+
 -- | Set the download priority of a torrent.
 setTorrentPriority :: TorrentPriority -> TorrentId -> TorrentAction Int
 setTorrentPriority pr = simpleAction "d.priority.set" [PTorrentPriority pr]
@@ -110,6 +117,13 @@ getLeftBytes = simpleAction "d.get_left_bytes" []
 
 getTorrentPriority :: TorrentId -> TorrentAction TorrentPriority
 getTorrentPriority = simpleAction "d.priority" []
+
+-- | Get the ratio (which is multiplied by a thousand)
+getRatio :: TorrentId -> TorrentAction Int
+getRatio = simpleAction "d.get_ratio" []
+
+getFileCount :: TorrentId -> TorrentAction Int
+getFileCount = simpleAction "d.get_size_files" []
 
 -- | Execute a command on all torrents.
 -- For example the command

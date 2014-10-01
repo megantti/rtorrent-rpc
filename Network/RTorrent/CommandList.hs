@@ -16,7 +16,7 @@ module Network.RTorrent.CommandList
   , module Network.RTorrent.File
   , module Network.RTorrent.TorrentCommand
 
-  -- * Functions for getting global variables
+  -- * Functions for global variables
   , Global 
   , getUpRate 
   , getDownRate
@@ -27,8 +27,13 @@ module Network.RTorrent.CommandList
   , getDownloadRate
   , setUploadRate
   , setDownloadRate
+  
+  -- * Loading new torrents
 
   , loadTorrent
+  , loadTorrentRaw
+  , loadStartTorrent
+  , loadStartTorrentRaw
 
   -- * Constructing new commands
 
@@ -48,13 +53,15 @@ module Network.RTorrent.CommandList
 import Control.DeepSeq
 import Network.XmlRpc.Internals
 
+import qualified Data.ByteString as BS
+import Data.ByteString.Base64
+
 import Network.RTorrent.Action
 import Network.RTorrent.Commands
 import Network.RTorrent.File
 import Network.RTorrent.Torrent
 import Network.RTorrent.Priority
 import Network.RTorrent.TorrentCommand
-
 
 -- | Run a command with no arguments.
 runSimple :: (XmlRpcType a, NFData a) => String -> Global a
@@ -101,9 +108,25 @@ getPid :: Global Int
 getPid = runSimple "system.pid"
 
 -- | Load a torrent file.
-loadTorrent :: String -- ^ Path
+loadTorrent :: String -- ^ A path / URL
         -> Global Int
 loadTorrent path = Global parseSingle [ValueString path] "load"
+
+-- | Load a torrent file.
+loadTorrentRaw :: BS.ByteString -- ^ A torrent file as data
+        -> Global Int
+loadTorrentRaw torrentData = Global parseSingle [ValueBase64 torrentData] "load_raw"
+
+-- | Load a torrent file and start downloading it.
+loadStartTorrent :: String -- ^ A path / URL
+        -> Global Int
+loadStartTorrent path = Global parseSingle [ValueString path] "load_start"
+
+-- | Load a torrent file and start downloading it.
+loadStartTorrentRaw :: BS.ByteString -- ^ A torrent file as data
+        -> Global Int
+loadStartTorrentRaw torrentData = Global parseSingle [ValueBase64 torrentData] "load_raw_start"
+    
 
 -- | Execute a command with a result type @t@.
 data Global t = Global (Value -> t) [Value] String
@@ -114,3 +137,4 @@ instance Command (Global a) where
 
 instance Functor Global where
     fmap f (Global g args s) = Global (f . g) args s
+
