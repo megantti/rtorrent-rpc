@@ -20,7 +20,6 @@ module Network.RTorrent.CommandList
   , Global 
   , getUpRate 
   , getDownRate
-  , getSimple
   , getDirectory
   , getPid
 
@@ -31,13 +30,17 @@ module Network.RTorrent.CommandList
 
   , loadTorrent
 
+  -- * Constructing new commands
+
+  , runSimple
+  , runArgs
+
   -- * Re-exported from "Network.RTorrent.Action"
   , (<+>)
   , sequenceActions
   , simpleAction
   -- * Re-exported from "Network.RTorrent.Commands"
   , (:*:)(..)
-  , MultiCommand (..)
   , AnyCommand (..)
   )
   where
@@ -53,33 +56,37 @@ import Network.RTorrent.Priority
 import Network.RTorrent.TorrentCommand
 
 
--- | Get a raw rtorrent variable.
-getSimple :: (XmlRpcType a, NFData a) => String -> Global a
-getSimple = Global parseSingle []
+-- | Run a command with no arguments.
+runSimple :: (XmlRpcType a, NFData a) => String -> Global a
+runSimple = runArgs []
+
+-- | Run a command with the given arguments.
+runArgs :: (XmlRpcType a, NFData a) => [Value] -> String -> Global a
+runArgs = Global parseSingle
 
 -- | Get the current up rate, in bytes per second.
 getUpRate :: Global Int
-getUpRate = getSimple "get_up_rate"
+getUpRate = runSimple "get_up_rate"
 
 -- | Get the current down rate, in bytes per second.
 getDownRate :: Global Int
-getDownRate = getSimple "get_down_rate"
+getDownRate = runSimple "get_down_rate"
 
 -- | Get the default download directory.
 getDirectory :: Global String
-getDirectory = getSimple "get_directory"
+getDirectory = runSimple "get_directory"
 
 -- | Get the maximum upload rate, in bytes per second.
 --
 -- @0@ means no limit.
 getUploadRate :: Global Int
-getUploadRate = getSimple "get_upload_rate"
+getUploadRate = runSimple "get_upload_rate"
 
 -- | Get the maximum download rate, in bytes per second.
 --
 -- @0@ means no limit.
 getDownloadRate :: Global Int
-getDownloadRate = getSimple "get_download_rate"
+getDownloadRate = runSimple "get_download_rate"
 
 -- | Set the maximum upload rate, in bytes per second.
 setUploadRate :: Int -> Global Int
@@ -91,14 +98,14 @@ setDownloadRate i = Global parseSingle [ValueInt i] "set_download_rate"
 
 -- | Get the process id.
 getPid :: Global Int
-getPid = getSimple "system.pid"
+getPid = runSimple "system.pid"
 
 -- | Load a torrent file.
 loadTorrent :: String -- ^ Path
         -> Global Int
 loadTorrent path = Global parseSingle [ValueString path] "load"
 
--- | Get a variable with result type @t@.
+-- | Execute a command with a result type @t@.
 data Global t = Global (Value -> t) [Value] String
 instance Command (Global a) where
     type Ret (Global a) = a

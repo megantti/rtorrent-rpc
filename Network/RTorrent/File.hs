@@ -11,19 +11,22 @@ Stability   : experimental
 module Network.RTorrent.File (
     FileId (..)
   , File (..)
+  , FileAction 
+  , getPartialFile
+  , getTorrentFiles
+  , allFiles
 
+  -- * Functions dealing with a single variable
   , getFilePath
-  , getFrozenPath
+  , getAbsolutePath
   , getFileSizeBytes
   , getFileSizeChunks
   , getFileCompletedChunks
   , getFilePriority
   , setFilePriority
-  , allFiles
-  , getTorrentFiles
-  , FileAction 
 ) where
 
+import Control.Applicative
 import Control.DeepSeq
 
 import Network.RTorrent.Action
@@ -49,32 +52,30 @@ instance XmlRpcType FileId where
     getType _ = TString
 
 data File = File {
-    fileId :: FileId
-  , filePath :: String
-  , fileFrozenPath :: String
+    filePath :: String
   , fileSizeBytes :: Int
   , fileSizeChunks :: Int
   , fileCompeletedChunks :: Int
   , filePriority :: FilePriority
+  , fileId :: FileId
 } deriving Show
 
 instance NFData FileId where
     rnf (FileId tid i) = rnf tid `seq` rnf i
 
 instance NFData File where
-    rnf (File fid fp ffp fsb fsc fcc fpt) = 
-              rnf fid
-        `seq` rnf fp 
-        `seq` rnf ffp 
+    rnf (File fid fp fsb fsc fcc fpt) = 
+              rnf fp 
         `seq` rnf fsb 
         `seq` rnf fsc
         `seq` rnf fcc
         `seq` rnf fpt
+        `seq` rnf fid
 
 type FileAction = Action FileId
 
 -- | Run the file action on the all files that a torrent has.
-allFiles :: (FileId -> FileAction a) -> (TorrentId -> TorrentAction [FileId :*: a])
+allFiles :: (FileId -> FileAction a) -> TorrentId -> TorrentAction [FileId :*: a]
 allFiles f = fmap addId . (getHash <+> allToMulti (allF f))
   where
     addId (hash :*: files) = 
@@ -87,8 +88,8 @@ getFilePath :: FileId -> FileAction String
 getFilePath = simpleAction "f.path" []
 
 -- | Get the absolute path.
-getFrozenPath :: FileId -> FileAction String
-getFrozenPath = simpleAction "f.frozen_path" []
+getAbsolutePath :: FileId -> FileAction String
+getAbsolutePath = simpleAction "f.frozen_path" []
 
 getFileSizeBytes :: FileId -> FileAction Int
 getFileSizeBytes = simpleAction "f.size_bytes" []
@@ -105,21 +106,19 @@ getFilePriority = simpleAction "f.priority" []
 setFilePriority :: FilePriority -> FileId -> FileAction Int
 setFilePriority pr = simpleAction "f.priority.set" [PFilePriority pr]
 
-getTorrentFiles :: TorrentId -> TorrentAction [File]
-getTorrentFiles = (fmap . fmap . fmap) mkFile (allFiles action)
+-- | Get a file except for @FileId@. The @FileId@ can be got by running @allFiles@.
+getPartialFile :: FileId -> FileAction (FileId -> File)
+getPartialFile = runActionB $ File 
+           <$> b getFilePath
+           <*> b getFileSizeBytes
+           <*> b getFileSizeChunks
+           <*> b getFileCompletedChunks
+           <*> b getFilePriority
   where
-    action = getFilePath
-         <+> getFrozenPath
-         <+> getFileSizeBytes
-         <+> getFileSizeChunks
-         <+> getFileCompletedChunks
-         <+> getFilePriority
-    mkFile   ( fid 
-           :*: path
-           :*: fpath
-           :*: size
-           :*: ch
-           :*: cch
-           :*: pr ) 
-        = File fid path fpath size ch cch pr
+    b = ActionB
+
+getTorrentFiles :: TorrentId -> TorrentAction [File]
+getTorrentFiles = fmap (fmap contract) . allFiles getPartialFile
+  where
+    contract (x :*: f) = f x
 

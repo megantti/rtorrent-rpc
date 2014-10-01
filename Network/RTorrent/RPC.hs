@@ -28,7 +28,6 @@ sets their priority to high.
 >import Network.RTorrent
 >
 >import Control.Monad
->import Data.Monoid (mconcat)
 >
 >main :: IO ()
 >main = do
@@ -42,11 +41,8 @@ sets their priority to high.
 >    putStrLn "Large files:"
 >    forM_ largeFiles $ \(torrent :*: _ :*: fPath :*: _) ->
 >        putStrLn $ "\t" ++ torrent ++ ": " ++ fPath
->    _ <- callLocal 
->        . MultiCommand
->        . map (\(_ :*: fid :*: _ :*: _) -> 
->              setFilePriority FilePriorityHigh fid)
->          $ largeFiles
+>    let cmd (_ :*: fid :*: _ :*: _) = setFilePriority FilePriorityHigh fid
+>    _ <- callLocal . map cmd $ largeFiles
 >    return ()
 -}
 

@@ -14,20 +14,17 @@ module Network.RTorrent.Commands (
       (:*:)(..)
     , Command (Ret, commandCall, commandValue, levels) 
 
-    -- * Multi commands
-    , MultiCommand (..)
+    -- * AnyCommand
 
     , AnyCommand (..)
     
-    -- * Utils for implementation
+    -- * Internal 
     , RTMethodCall (..)
     , runRTMethodCall
     , mkRTMethodCall
     , parseSingle
     , getArray, single
 ) where
-
-import Data.Monoid
 
 import Control.DeepSeq
 import Control.Monad.Error
@@ -55,9 +52,10 @@ instance (Command a, Command b) => Command (a :*: b) where
           val :: Command c => c -> [Value]
           val = getArray . runRTMethodCall . commandCall
 
-    commandValue (a :*: b) (ValueArray xs) = (commandValue a . ValueArray $ take l xs) 
-                                    :*: (commandValue b . ValueArray $ drop l xs)
+    commandValue (a :*: b) (ValueArray xs) = (commandValue a . ValueArray $ as) 
+                                    :*: (commandValue b . ValueArray $ bs)
         where
+            (as, bs) = splitAt l xs
             l = levels a
     commandValue _ _ = error "commandValue in Command (a :*: b) instance failed"
             
@@ -111,8 +109,6 @@ class Command a where
     levels :: a -> Int
     levels _ = 1
 
---- MultiCommands
-
 -- | Existential wrapper for any command.
 data AnyCommand where
     AnyCommand :: Command a => a -> AnyCommand
@@ -123,22 +119,13 @@ instance Command AnyCommand where
     commandValue _ = head . getArray
     levels (AnyCommand cmd) = levels cmd
 
--- | A command that can be used to run multiple commands.
-data MultiCommand a = MultiCommand [a]
-
-instance Monoid (MultiCommand a) where
-    mempty = MultiCommand []
-    (MultiCommand as) `mappend` (MultiCommand bs) = MultiCommand (as ++ bs)
-
-instance Command a => Command (MultiCommand a) where
-    type Ret (MultiCommand a) = [Ret a]
-    commandCall (MultiCommand m) = RTMethodCall . ValueArray 
+instance Command a => Command [a] where
+    type Ret [a] = [Ret a]
+    commandCall = RTMethodCall . ValueArray 
                 . concatMap ( getArray 
                             . runRTMethodCall . commandCall)
-                $ m
-    commandValue (MultiCommand cmds) = zipWith (\cmd -> commandValue cmd 
-                                                        . ValueArray) cmds
+    commandValue cmds = zipWith (\cmd -> commandValue cmd . ValueArray) cmds
                                        . splitPlaces (map levels cmds) 
                                        . getArray 
-    levels (MultiCommand cmds) = sum $ map levels cmds
+    levels cmds = sum $ map levels cmds
 
