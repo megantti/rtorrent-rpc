@@ -6,7 +6,7 @@ This library can be used for communicating with RTorrent over its XML-RPC interf
 As an example, you can request torrent info and bandwidth usage:
 
 ```haskell
-result <- callCommand "localhost" 5000 
+result <- callRTorrent "localhost" 5000 
 	$ getTorrents :*: getUpRate :*: getDownRate
 case result of 
   Right (torrentInfo :*: uploadRate :*: downloadRate) -> ...
@@ -43,6 +43,6 @@ main = do
     forM_ largeFiles $ \(torrent :*: _ :*: fPath :*: _) ->
         putStrLn $ "\t" ++ torrent ++ ": " ++ fPath
     let cmd (_ :*: fid :*: _ :*: _) = setFilePriority FilePriorityHigh fid
-    _ <- callLocal $ map cmd largeFiles
+    _ <- callRTorrent "localhost" 5000 $ map cmd largeFiles
     return ()
 ```
