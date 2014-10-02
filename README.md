@@ -32,7 +32,7 @@ import Network.RTorrent
 
 main :: IO ()
 main = do
-    Right torrents <- callLocal . allTorrents $ 
+    Right torrents <- callRTorrent "localhost" 5000 . allTorrents $ 
                         getTorrentName <+> allFiles (getFilePath <+> getFileSizeBytes)
     let largeFiles = 
                 filter (\(_ :*: _ :*: _ :*: size) -> size > 10^8)

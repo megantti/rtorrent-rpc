@@ -20,14 +20,14 @@ on a group of objects.
 For example, 
 
 @
-callLocal $ some_action (some_id :: SomeId)
+callRTorrent "localhost" 5000 $ some_action (some_id :: SomeId)
 @
 is a valid thing to write when @some@ is one of the previous objects.
 
 To call an action on all torrents, you can use 'Network.RTorrent.Torrent.allTorrents', so that
 
 @
-callLocal $ allTorrents getTorrentId
+callRTorrent "localhost" 5000 $ allTorrents getTorrentId
 @
 will return a list of torrent ids.
 

@@ -7,7 +7,7 @@ License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental
 
-For more info on actions, see "Action".
+For more info on actions, see "Network.RTorrent.Action".
 -}
 
 module Network.RTorrent.File (

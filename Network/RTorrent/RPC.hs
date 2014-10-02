@@ -12,7 +12,7 @@ This package can be used for communicating with RTorrent over its XML-RPC interf
 For example, you can request torrent info and bandwidth usage:
 
 @
-result <- callCommand "localhost" 5000 $ 
+result <- callRTorrent "localhost" 5000 $ 
     'getTorrents' ':*:' 'getUpRate' ':*:' 'getDownRate'
 case result of 
   Right (torrentInfo :*: uploadRate :*: downloadRate) -> ...
@@ -36,7 +36,7 @@ import Network.RTorrent
 
 main :: IO ()
 main = do
-    Right torrents <- callLocal . 'allTorrents' $ 
+    Right torrents <- callRTorrent "localhost" 5000 . 'allTorrents' $ 
                         'getTorrentName' '<+>' 'allFiles' ('getFilePath' '<+>' 'getFileSizeBytes')
     let largeFiles = 
                 filter (\\(_ ':*:' _ ':*:' _ ':*:' size) -> size > 10^8)
@@ -47,17 +47,15 @@ main = do
     forM_ largeFiles $ \\(torrent :*: _ :*: fPath :*: _) ->
         putStrLn $ "\\t" ++ torrent ++ ": " ++ fPath
     let cmd (_ :*: fid :*: _ :*: _) = 'setFilePriority' 'FilePriorityHigh' fid
-    _ <- callLocal $ map cmd largeFiles
+    _ <- callRTorrent "localhost" 5000 $ map cmd largeFiles
     return ()
 @
 -}
 
 module Network.RTorrent.RPC (
       module Network.RTorrent.CommandList
-    , callCommand 
-    , callCommandEval
-
-    , callLocal
+    , callRTorrent 
+    , callRTorrentEval
     ) where
 
 import Control.Applicative
@@ -75,8 +73,8 @@ import qualified Network.RTorrent.Command as C
 import Network.RTorrent.CommandList
 import Network.RTorrent.SCGI
 
-callRTorrent :: HostName -> Int -> C.RTMethodCall -> ErrorT String IO Value
-callRTorrent host port calls = do
+callRTorrentRaw :: HostName -> Int -> C.RTMethodCall -> ErrorT String IO Value
+callRTorrentRaw host port calls = do
     let request = Body [] . mconcat . LB.toChunks $ renderCall call 
     Body _ content <- ErrorT $ query host port request
     let cs = map (toEnum . fromEnum) $ BS.unpack content
@@ -89,46 +87,33 @@ callRTorrent host port calls = do
   where
     call = MethodCall "system.multicall" [C.runRTMethodCall calls]
 
-callCommandEvalWith :: Command a =>
+callRTorrentEvalWith :: Command a =>
     (Ret a -> Ret a)
     -> HostName
     -> Int
     -> a 
     -> IO (Either String (Ret a))
-callCommandEvalWith eval host port command = 
+callRTorrentEvalWith eval host port command = 
     handleException $ runErrorT . (>>= lift . evaluate . eval) $ 
-        C.commandValue command <$> callRTorrent host port (C.commandCall command)
+        C.commandValue command <$> callRTorrentRaw host port (C.commandCall command)
   where
     handleException f = catch f (\e -> return . Left . show $ (e :: SomeException))
 
 -- | Call RTorrent with a command.
--- Only one connection is opened even when using ':*:' to combine commands.
-callCommand :: Command a => 
+-- Only one connection is opened even when using combinators
+-- like ':*:' to combine commands.
+callRTorrent :: Command a => 
     HostName -- ^ Hostname
     -> Int  -- ^ Port
     -> a -- ^ Command to send to RTorrent
     -> IO (Either String (Ret a))
-callCommand = callCommandEvalWith id
+callRTorrent = callRTorrentEvalWith id
 
--- | Like callCommand, but evaluates its result completely.
---
--- Can be used for example when the command returns lists
--- that won't get evaluated to make sure that no errors
--- pop after getting @Right@ from the function,
--- or when you aren't sure about the strictness properties of
--- your code.
---
--- The other choice is to ensure that the elements
--- in lazy data structures like lists get evaluated 
--- for example by using 'forceFoldable'.
-callCommandEval :: (Command a, NFData (Ret a)) => 
+-- | Like callRTorrent, but evaluates its result completely.
+callRTorrentEval :: (Command a, NFData (Ret a)) => 
     HostName -- ^ Hostname
     -> Int  -- ^ Port
     -> a -- ^ Command to send to RTorrent
     -> IO (Either String (Ret a))
-callCommandEval = callCommandEvalWith force
+callRTorrentEval = callRTorrentEvalWith force
 
--- | 
--- > callLocal = callCommand "localhost" 5000
-callLocal :: Command a => a -> IO (Either String (Ret a))
-callLocal = callCommand "localhost" 5000
