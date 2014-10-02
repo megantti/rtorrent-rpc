@@ -13,7 +13,7 @@ For example, you can request torrent info and bandwidth usage:
 
 @
 result <- callCommand "localhost" 5000 $ 
-    getAllTorrentInfo ':*:' getUpRate ':*:' getDownRate
+    'getTorrents' ':*:' 'getUpRate' ':*:' 'getDownRate'
 case result of 
   Right (torrentInfo :*: uploadRate :*: downloadRate) -> ...
 @
@@ -37,7 +37,7 @@ import Network.RTorrent
 main :: IO ()
 main = do
     Right torrents <- callLocal . 'allTorrents' $ 
-                        'getName' '<+>' 'allFiles' ('getFilePath' '<+>' 'getFileSizeBytes')
+                        'getTorrentName' '<+>' 'allFiles' ('getFilePath' '<+>' 'getFileSizeBytes')
     let largeFiles = 
                 filter (\\(_ ':*:' _ ':*:' _ ':*:' size) -> size > 10^8)
                 . concatMap (\\(tName :*: fileList) -> 

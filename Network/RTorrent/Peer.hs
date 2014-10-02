@@ -6,6 +6,8 @@ Copyright   : (c) Kai Lindholm, 2014
 License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental
+
+For more info on actions, see "Network.RTorrent.Action".
 -}
 
 module Network.RTorrent.Peer (
@@ -49,7 +51,7 @@ data PeerId = PeerId !TorrentId !String
     deriving Show
 
 instance XmlRpcType PeerId where
-    toValue (PeerId tid i) = ValueString $ getTorrentId tid ++ ":p" ++ i
+    toValue (PeerId (TorrentId tid) i) = ValueString $ tid ++ ":p" ++ i
     fromValue v = return . uncurry PeerId . parse =<< fromValue v
       where
         parse :: String -> (TorrentId, String)
@@ -148,7 +150,7 @@ getTorrentPeers = fmap (mapStrict contract) . allPeers getPeerPartial
 
 -- | Run the peer action on all peers that a torrent has.
 allPeers :: (PeerId -> PeerAction a) -> TorrentId -> TorrentAction [PeerId :*: a]
-allPeers p = fmap addId . (getHash <+> allToMulti (allP (getPeerHash <+> p)))
+allPeers p = fmap addId . (getTorrentId <+> allToMulti (allP (getPeerHash <+> p)))
   where
     addId (hash :*: peers) = 
         mapStrict (\(phash :*: f) -> PeerId hash phash :*: f) peers

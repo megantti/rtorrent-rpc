@@ -106,7 +106,7 @@ parseValue = fromRight . runIdentity . runErrorT . fromValue
 parseSingle :: XmlRpcType a => Value -> a
 parseSingle = parseValue . single . single
 
--- | Map that is very strict: 
+-- | Map that is strict: 
 -- it evaluates all of its elements to weak head normal form.
 mapStrict :: (a -> b) -> [a] -> [b]
 mapStrict f = go

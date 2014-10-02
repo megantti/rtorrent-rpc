@@ -5,6 +5,7 @@ License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental
 
+For more info on actions, see "Network.RTorrent.Action".
 -}
 
 module Network.RTorrent.Torrent
@@ -17,26 +18,26 @@ module Network.RTorrent.Torrent
   , close
   , erase
   , checkHash
-  , getTorrentInfo
-  , getAllTorrentInfo
+  , getTorrent
+  , getTorrents
 
   , allTorrents 
 
   -- * Functions for single variables
   , setTorrentPriority
   , getTorrentPriority
-  , getHash 
-  , getIsOpen
+  , getTorrentId 
+  , getTorrentOpen
   , getTorrentUpRate
   , getTorrentDownRate
-  , getSizeBytes
-  , getLeftBytes
-  , getName
-  , getPath
+  , getTorrentSizeBytes
+  , getTorrentLeftBytes
+  , getTorrentName
+  , getTorrentPath
   , getTorrentDir
   , setTorrentDir
-  , getRatio
-  , getFileCount
+  , getTorrentRatio
+  , getTorrentFileCount
   )
   where
 
@@ -49,9 +50,8 @@ import Network.RTorrent.Command
 import Network.RTorrent.Priority
 
 -- | A newtype wrapper for torrent identifiers.
-newtype TorrentId = TorrentId { 
-      getTorrentId :: String 
-    } deriving Show
+newtype TorrentId = TorrentId String 
+    deriving Show
 
 type TorrentAction = Action TorrentId
 
@@ -59,7 +59,7 @@ instance NFData TorrentId where
     rnf (TorrentId str) = rnf str
 
 instance XmlRpcType TorrentId where
-    toValue = ValueString . getTorrentId
+    toValue (TorrentId s) = ValueString s
     fromValue v = return . TorrentId =<< fromValue v
     getType _ = TString
 
@@ -90,16 +90,16 @@ instance NFData TorrentInfo where
         rnf a8
 
 -- | Get a TorrentInfo for a torrent.
-getTorrentInfo :: TorrentId -> TorrentAction TorrentInfo
-getTorrentInfo = runActionB $ TorrentInfo
-         <$> b getHash
-         <*> b getName
-         <*> b getIsOpen
+getTorrent :: TorrentId -> TorrentAction TorrentInfo
+getTorrent = runActionB $ TorrentInfo
+         <$> b getTorrentId
+         <*> b getTorrentName
+         <*> b getTorrentOpen
          <*> b getTorrentDownRate
          <*> b getTorrentUpRate
-         <*> b getSizeBytes
-         <*> b getLeftBytes
-         <*> b getPath
+         <*> b getTorrentSizeBytes
+         <*> b getTorrentLeftBytes
+         <*> b getTorrentPath
          <*> b getTorrentDir
          <*> b getTorrentPriority
   where
@@ -125,15 +125,15 @@ checkHash = simpleAction "d.check_hash" []
 setTorrentPriority :: TorrentPriority -> TorrentId -> TorrentAction Int
 setTorrentPriority pr = simpleAction "d.priority.set" [PTorrentPriority pr]
 
-getHash :: TorrentId -> TorrentAction TorrentId
-getHash = simpleAction "d.hash" []
+getTorrentId :: TorrentId -> TorrentAction TorrentId
+getTorrentId = simpleAction "d.hash" []
 
-getName :: TorrentId -> TorrentAction String
-getName = simpleAction "d.get_name" []
+getTorrentName :: TorrentId -> TorrentAction String
+getTorrentName = simpleAction "d.get_name" []
 
 -- | Get the absolute path to the torrent's directory or file.
-getPath :: TorrentId -> TorrentAction String
-getPath = simpleAction "d.get_base_path" []
+getTorrentPath :: TorrentId -> TorrentAction String
+getTorrentPath = simpleAction "d.get_base_path" []
 
 -- | Get the absolute path to the directory in which the torrent's directory or
 -- file resides.
@@ -143,8 +143,8 @@ getTorrentDir = simpleAction "d.get_directory" []
 setTorrentDir :: String -> TorrentId -> TorrentAction Int
 setTorrentDir dir = simpleAction "d.set_directory" [PString dir]
 
-getIsOpen :: TorrentId -> TorrentAction Bool
-getIsOpen = Action [("d.is_open", [])] (bool . single . single)
+getTorrentOpen :: TorrentId -> TorrentAction Bool
+getTorrentOpen = Action [("d.is_open", [])] (bool . single . single)
 
 getTorrentUpRate :: TorrentId -> TorrentAction Int
 getTorrentUpRate = simpleAction "d.get_up_rate" []
@@ -152,21 +152,21 @@ getTorrentUpRate = simpleAction "d.get_up_rate" []
 getTorrentDownRate :: TorrentId -> TorrentAction Int
 getTorrentDownRate = simpleAction "d.get_down_rate" []
 
-getSizeBytes :: TorrentId -> TorrentAction Int
-getSizeBytes = simpleAction "d.get_size_bytes" []
+getTorrentSizeBytes :: TorrentId -> TorrentAction Int
+getTorrentSizeBytes = simpleAction "d.get_size_bytes" []
 
-getLeftBytes :: TorrentId -> TorrentAction Int
-getLeftBytes = simpleAction "d.get_left_bytes" []
+getTorrentLeftBytes :: TorrentId -> TorrentAction Int
+getTorrentLeftBytes = simpleAction "d.get_left_bytes" []
 
 getTorrentPriority :: TorrentId -> TorrentAction TorrentPriority
 getTorrentPriority = simpleAction "d.priority" []
 
 -- | Get the ratio (which is multiplied by a thousand)
-getRatio :: TorrentId -> TorrentAction Int
-getRatio = simpleAction "d.get_ratio" []
+getTorrentRatio :: TorrentId -> TorrentAction Int
+getTorrentRatio = simpleAction "d.get_ratio" []
 
-getFileCount :: TorrentId -> TorrentAction Int
-getFileCount = simpleAction "d.get_size_files" []
+getTorrentFileCount :: TorrentId -> TorrentAction Int
+getTorrentFileCount = simpleAction "d.get_size_files" []
 
 -- | Execute a command on all torrents.
 -- For example the command
@@ -177,6 +177,5 @@ allTorrents :: (TorrentId -> TorrentAction a) -> AllAction TorrentId a
 allTorrents = AllAction (TorrentId "") "d.multicall"
 
 -- | A command for getting torrent info for all torrents.
-getAllTorrentInfo :: AllAction TorrentId TorrentInfo
-getAllTorrentInfo = allTorrents getTorrentInfo
-
+getTorrents :: AllAction TorrentId TorrentInfo
+getTorrents = allTorrents getTorrent

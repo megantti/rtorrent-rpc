@@ -6,14 +6,16 @@ Copyright   : (c) Kai Lindholm, 2014
 License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental
+
+For more info on actions, see "Network.RTorrent.Action".
 -}
 
 module Network.RTorrent.Tracker (
     TrackerId (..)
   , TrackerType (..)
-  , Tracker (..)
+  , TrackerInfo (..)
   , TrackerAction 
-  , getPartialTracker
+  , getTrackerPartial
   , getTorrentTrackers
   , allTrackers
 
@@ -38,7 +40,7 @@ import Data.List.Split (splitOn)
 data TrackerId = TrackerId !TorrentId !Int deriving Show
 
 instance XmlRpcType TrackerId where
-    toValue (TrackerId tid i) = ValueString $ getTorrentId tid ++ ":t" ++ show i
+    toValue (TrackerId (TorrentId tid) i) = ValueString $ tid ++ ":t" ++ show i
     fromValue v = return . uncurry TrackerId . parse =<< fromValue v
       where
         parse :: String -> (TorrentId, Int)
@@ -71,7 +73,7 @@ instance XmlRpcType TrackerType where
 
 instance NFData TrackerType
 
-data Tracker = Tracker {
+data TrackerInfo = TrackerInfo {
     trackerUrl :: !String
   , trackerType :: !TrackerType
   , trackerEnabled :: !Bool
@@ -82,8 +84,8 @@ data Tracker = Tracker {
 instance NFData TrackerId where
     rnf (TrackerId tid i) = rnf tid `seq` rnf i
 
-instance NFData Tracker where
-    rnf (Tracker a0 a1 a2 a3 a4) = 
+instance NFData TrackerInfo where
+    rnf (TrackerInfo a0 a1 a2 a3 a4) = 
               rnf a0 
         `seq` rnf a1
         `seq` rnf a2
@@ -94,7 +96,7 @@ type TrackerAction = Action TrackerId
 
 -- | Run the tracker action on all trackers that a torrent has.
 allTrackers :: (TrackerId -> TrackerAction a) -> TorrentId -> TorrentAction [TrackerId :*: a]
-allTrackers t = fmap addId . (getHash <+> allToMulti (allT t))
+allTrackers t = fmap addId . (getTorrentId <+> allToMulti (allT t))
   where
     addId (hash :*: trackers) = 
         forceFoldable
@@ -118,8 +120,8 @@ getTrackerOpen :: TrackerId -> TrackerAction Bool
 getTrackerOpen = fmap toEnum . simpleAction "t.is_open" []
 
 -- | Get a tracker except for @TrackerId@. The @TrackerId@ can be got by running @allTrackers@.
-getPartialTracker :: TrackerId -> TrackerAction (TrackerId -> Tracker)
-getPartialTracker = runActionB $ Tracker 
+getTrackerPartial :: TrackerId -> TrackerAction (TrackerId -> TrackerInfo)
+getTrackerPartial = runActionB $ TrackerInfo
            <$> b getTrackerUrl
            <*> b getTrackerType
            <*> b getTrackerEnabled
@@ -127,8 +129,8 @@ getPartialTracker = runActionB $ Tracker
   where
     b = ActionB
 
-getTorrentTrackers :: TorrentId -> TorrentAction [Tracker]
-getTorrentTrackers = fmap (mapStrict contract) . allTrackers getPartialTracker
+getTorrentTrackers :: TorrentId -> TorrentAction [TrackerInfo]
+getTorrentTrackers = fmap (mapStrict contract) . allTrackers getTrackerPartial
   where
     contract (x :*: f) = f x
 
