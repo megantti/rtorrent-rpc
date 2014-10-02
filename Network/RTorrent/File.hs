@@ -51,12 +51,12 @@ instance XmlRpcType FileId where
     getType _ = TString
 
 data File = File {
-    filePath :: String
-  , fileSizeBytes :: Int
-  , fileSizeChunks :: Int
-  , fileCompeletedChunks :: Int
-  , filePriority :: FilePriority
-  , fileId :: FileId
+    filePath :: !String
+  , fileSizeBytes :: !Int
+  , fileSizeChunks :: !Int
+  , fileCompeletedChunks :: !Int
+  , filePriority :: !FilePriority
+  , fileId :: !FileId
 } deriving Show
 
 instance NFData FileId where
@@ -78,7 +78,8 @@ allFiles :: (FileId -> FileAction a) -> TorrentId -> TorrentAction [FileId :*: a
 allFiles f = fmap addId . (getHash <+> allToMulti (allF f))
   where
     addId (hash :*: files) = 
-        zipWith (\index -> (:*:) (FileId hash index)) [0..] files 
+        mapStrict id
+        $ zipWith (\index -> (:*:) (FileId hash index)) [0..] files 
     allF :: (FileId -> FileAction a) -> AllAction FileId a
     allF = AllAction (FileId (TorrentId "") 0) "f.multicall"
 
@@ -117,7 +118,7 @@ getPartialFile = runActionB $ File
     b = ActionB
 
 getTorrentFiles :: TorrentId -> TorrentAction [File]
-getTorrentFiles = fmap (fmap contract) . allFiles getPartialFile
+getTorrentFiles = fmap (mapStrict contract) . allFiles getPartialFile
   where
     contract (x :*: f) = f x
 

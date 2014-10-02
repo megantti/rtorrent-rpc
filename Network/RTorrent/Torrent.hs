@@ -63,16 +63,16 @@ instance XmlRpcType TorrentId where
     getType _ = TString
 
 data TorrentInfo = TorrentInfo {
-      torrentId :: TorrentId
-    , torrentName :: String
-    , torrentOpen :: Bool
-    , torrentDownRate :: Int
-    , torrentUpRate :: Int
-    , torrentSize :: Int
-    , torrentBytesLeft :: Int
-    , torrentPath :: String
-    , torrentDir :: String
-    , torrentTorrentPriority :: TorrentPriority
+      torrentId :: !TorrentId
+    , torrentName :: !String
+    , torrentOpen :: !Bool
+    , torrentDownRate :: !Int
+    , torrentUpRate :: !Int
+    , torrentSize :: !Int
+    , torrentBytesLeft :: !Int
+    , torrentPath :: !String
+    , torrentDir :: !String
+    , torrentTorrentPriority :: !TorrentPriority
     } deriving Show
 
 instance NFData TorrentInfo where

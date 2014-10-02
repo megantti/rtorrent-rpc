@@ -63,16 +63,16 @@ instance NFData PeerId where
     rnf (PeerId tid i) = rnf tid `seq` rnf i
 
 data PeerInfo = PeerInfo {
-    peerClient :: String
-  , peerIp :: String
-  , peerUpRate :: Int
-  , peerDownRate :: Int
-  , peerUpTotal :: Int
-  , peerDownTotal :: Int
-  , peerEncrypted :: Bool
-  , peerCompletedPercent :: Int
-  , peerPort :: Int
-  , peerId :: PeerId
+    peerClient :: !String
+  , peerIp :: !String
+  , peerUpRate :: !Int
+  , peerDownRate :: !Int
+  , peerUpTotal :: !Int
+  , peerDownTotal :: !Int
+  , peerEncrypted :: !Bool
+  , peerCompletedPercent :: !Int
+  , peerPort :: !Int
+  , peerId :: !PeerId
 } deriving Show
 
 instance NFData PeerInfo where
@@ -142,7 +142,7 @@ banPeer = simpleAction "p.banned.set" [PInt 1]
 type PeerAction = Action PeerId
 
 getTorrentPeers :: TorrentId -> TorrentAction [PeerInfo]
-getTorrentPeers = fmap (fmap contract) . allPeers getPeerPartial
+getTorrentPeers = fmap (mapStrict contract) . allPeers getPeerPartial
   where
     contract (x :*: f) = f x
 
@@ -151,6 +151,6 @@ allPeers :: (PeerId -> PeerAction a) -> TorrentId -> TorrentAction [PeerId :*: a
 allPeers p = fmap addId . (getHash <+> allToMulti (allP (getPeerHash <+> p)))
   where
     addId (hash :*: peers) = 
-        map (\(phash :*: f) -> PeerId hash phash :*: f) peers
+        mapStrict (\(phash :*: f) -> PeerId hash phash :*: f) peers
     allP :: (PeerId -> PeerAction a) -> AllAction PeerId a
     allP = AllAction (PeerId (TorrentId "") "") "p.multicall"

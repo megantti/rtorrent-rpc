@@ -15,6 +15,7 @@ module Network.RTorrent.CommandList
   , module Network.RTorrent.Peer
   , module Network.RTorrent.Priority
   , module Network.RTorrent.Torrent
+  , module Network.RTorrent.Tracker
 
   -- * Functions for global variables
   , Global 
@@ -50,6 +51,7 @@ module Network.RTorrent.CommandList
   , (:*:)(..)
   , AnyCommand (..)
   , Command (Ret)
+  , mapStrict
   )
   where
 
@@ -61,8 +63,9 @@ import Network.RTorrent.Action
 import Network.RTorrent.Command
 import Network.RTorrent.File
 import Network.RTorrent.Peer
-import Network.RTorrent.Torrent
 import Network.RTorrent.Priority
+import Network.RTorrent.Torrent
+import Network.RTorrent.Tracker
 
 -- | Run a command with no arguments.
 runSimple :: XmlRpcType a => String -> Global a

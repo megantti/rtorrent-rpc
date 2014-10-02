@@ -55,7 +55,8 @@ main = do
 module Network.RTorrent.RPC (
       module Network.RTorrent.CommandList
     , callCommand 
-    , callCommand'
+    , callCommandEval
+
     , callLocal
     ) where
 
@@ -70,7 +71,6 @@ import qualified Data.ByteString.Lazy as LB
 import Network
 import Network.XmlRpc.Internals
 
-import Network.RTorrent.Command (Command (Ret))
 import qualified Network.RTorrent.Command as C
 import Network.RTorrent.CommandList
 import Network.RTorrent.SCGI
@@ -89,13 +89,13 @@ callRTorrent host port calls = do
   where
     call = MethodCall "system.multicall" [C.runRTMethodCall calls]
 
-callCommandEval :: Command a =>
+callCommandEvalWith :: Command a =>
     (Ret a -> Ret a)
     -> HostName
     -> Int
     -> a 
     -> IO (Either String (Ret a))
-callCommandEval eval host port command = 
+callCommandEvalWith eval host port command = 
     handleException $ runErrorT . (>>= lift . evaluate . eval) $ 
         C.commandValue command <$> callRTorrent host port (C.commandCall command)
   where
@@ -108,15 +108,24 @@ callCommand :: Command a =>
     -> Int  -- ^ Port
     -> a -- ^ Command to send to RTorrent
     -> IO (Either String (Ret a))
-callCommand = callCommandEval id
+callCommand = callCommandEvalWith id
 
 -- | Like callCommand, but evaluates its result completely.
-callCommand' :: (Command a, NFData (Ret a)) => 
+--
+-- Can be used for example when the command returns lists
+-- that won't get evaluated to make sure that no errors
+-- pop after getting @Right@ from the function,
+-- or when you aren't sure about the strictness properties of
+-- your code.
+--
+-- The other choice is to ensure that lists get completely evaluted
+-- by using 'mapStrict', for example by calling @mapStrict id@ on the list.
+callCommandEval :: (Command a, NFData (Ret a)) => 
     HostName -- ^ Hostname
     -> Int  -- ^ Port
     -> a -- ^ Command to send to RTorrent
     -> IO (Either String (Ret a))
-callCommand' = callCommandEval force
+callCommandEval = callCommandEvalWith force
 
 -- | 
 -- > callLocal = callCommand "localhost" 5000

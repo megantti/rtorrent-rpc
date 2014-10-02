@@ -14,6 +14,7 @@ module Network.RTorrent.Command (
       (:*:)(..)
     , Command (Ret, commandCall, commandValue, levels) 
 
+    , mapStrict
     -- * AnyCommand
 
     , AnyCommand (..)
@@ -25,7 +26,6 @@ module Network.RTorrent.Command (
     , parseSingle
     , getArray, single
     , bool
-    , mapStrict
 ) where
 
 import Control.Applicative
@@ -103,7 +103,8 @@ parseValue = fromRight . runIdentity . runErrorT . fromValue
 parseSingle :: XmlRpcType a => Value -> a
 parseSingle = parseValue . single . single
 
--- | Map that is very strict: it evaluates all of its elements to WNHF.
+-- | Map that is very strict: 
+-- it evaluates all of its elements to weak head normal form.
 mapStrict :: (a -> b) -> [a] -> [b]
 mapStrict f = go
   where
