@@ -31,8 +31,7 @@ import Control.DeepSeq
 
 import Network.RTorrent.Action
 import Network.RTorrent.Torrent
-import Network.RTorrent.TorrentCommand
-import Network.RTorrent.Commands
+import Network.RTorrent.Command
 import Network.RTorrent.Priority
 import Network.XmlRpc.Internals
 

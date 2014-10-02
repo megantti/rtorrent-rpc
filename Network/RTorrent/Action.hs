@@ -10,8 +10,6 @@ Stability   : experimental
 
 module Network.RTorrent.Action (
       Action (..)
-    , TorrentAction
-    , ActionB (..)
     , simpleAction
 
     , sequenceActions
@@ -19,6 +17,7 @@ module Network.RTorrent.Action (
 
     , Param (..)
 
+    , ActionB (..)
     -- * Internal
     , AllAction (..)
     , allToMulti 
@@ -30,8 +29,7 @@ import Data.Monoid
 import Data.Traversable
 
 import Network.XmlRpc.Internals
-import Network.RTorrent.Torrent
-import Network.RTorrent.Commands
+import Network.RTorrent.Command
 import Network.RTorrent.Priority
 
 -- | A type for actions that can act on different things like torrents and files.
@@ -39,8 +37,6 @@ import Network.RTorrent.Priority
 -- @i@ means the identifier type and @a@ the return type.
 data Action i a 
     = Action [(String, [Param])] (Value -> a) i
-
-type TorrentAction = Action TorrentId
 
 -- | Wrapper to get monoid and applicative instances.
 newtype ActionB i a = ActionB { runActionB :: i -> Action i a} 
@@ -144,7 +140,7 @@ wrapForParse = map (
                  . getArray) 
                . getArray . single . single
 
-allToMulti :: AllAction i a -> TorrentId -> Action TorrentId [a]
+allToMulti :: AllAction i a -> j -> Action j [a]
 allToMulti (AllAction emptyId multicall action) = 
     Action [(multicall, map PString $ makeMultiCall cmds)] 
            (map parse . wrapForParse)

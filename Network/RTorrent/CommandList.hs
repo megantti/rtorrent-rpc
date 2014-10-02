@@ -11,11 +11,10 @@ A module for defined commands.
 -}
 
 module Network.RTorrent.CommandList 
-  ( module Network.RTorrent.Torrent
-  , module Network.RTorrent.Priority
-  , module Network.RTorrent.File
+  ( module Network.RTorrent.File
   , module Network.RTorrent.Peer
-  , module Network.RTorrent.TorrentCommand
+  , module Network.RTorrent.Priority
+  , module Network.RTorrent.Torrent
 
   -- * Functions for global variables
   , Global 
@@ -45,7 +44,7 @@ module Network.RTorrent.CommandList
   , (<+>)
   , sequenceActions
   , simpleAction
-  -- * Re-exported from "Network.RTorrent.Commands"
+  -- * Re-exported from "Network.RTorrent.Command"
   , (:*:)(..)
   , AnyCommand (..)
   )
@@ -56,12 +55,11 @@ import Network.XmlRpc.Internals
 import Data.ByteString (ByteString)
 
 import Network.RTorrent.Action
-import Network.RTorrent.Commands
+import Network.RTorrent.Command
 import Network.RTorrent.File
 import Network.RTorrent.Peer
 import Network.RTorrent.Torrent
 import Network.RTorrent.Priority
-import Network.RTorrent.TorrentCommand
 
 -- | Run a command with no arguments.
 runSimple :: XmlRpcType a => String -> Global a

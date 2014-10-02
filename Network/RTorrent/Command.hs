@@ -3,14 +3,14 @@
 {-# LANGUAGE GADTs #-}
 
 {-|
-Module      : Commands
+Module      : Command
 Copyright   : (c) Kai Lindholm, 2014
 License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental
 -}
 
-module Network.RTorrent.Commands (
+module Network.RTorrent.Command (
       (:*:)(..)
     , Command (Ret, commandCall, commandValue, levels) 
 

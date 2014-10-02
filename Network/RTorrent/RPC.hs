@@ -9,11 +9,14 @@ Stability   : experimental
 
 This package can be used for communicating with RTorrent over its XML-RPC interface.
 
-As an example, you can request torrent info and bandwidth usage:
+For example, you can request torrent info and bandwidth usage:
 
-> result <- callCommand "localhost" 5000 $ getAllTorrentInfo :*: getUpRate :*: getDownRate
-> case result of 
->   Right (torrentInfo :*: uploadRate :*: downloadRate) -> ...
+@
+result <- callCommand "localhost" 5000 $ 
+    getAllTorrentInfo ':*:' getUpRate ':*:' getDownRate
+case result of 
+  Right (torrentInfo :*: uploadRate :*: downloadRate) -> ...
+@
 where
 
 >>> :t torrentInfo
@@ -27,25 +30,26 @@ As a more complete example, the following code finds all files that are over
 100 megabytes, prints them along with the torrent they belong to and 
 sets their priorities to high.
 
->import Network.RTorrent
->
->import Control.Monad
->
->main :: IO ()
->main = do
->    Right torrents <- callLocal . allTorrents $ 
->                        getName <+> allFiles (getFilePath <+> getFileSizeBytes)
->    let largeFiles = 
->                filter (\(_ :*: _ :*: _ :*: size) -> size > 10^8)
->                . concatMap (\(tName :*: fileList) -> 
->                                map ((:*:) tName) fileList) 
->                $ torrents
->    putStrLn "Large files:"
->    forM_ largeFiles $ \(torrent :*: _ :*: fPath :*: _) ->
->        putStrLn $ "\t" ++ torrent ++ ": " ++ fPath
->    let cmd (_ :*: fid :*: _ :*: _) = setFilePriority FilePriorityHigh fid
->    _ <- callLocal . map cmd $ largeFiles
->    return ()
+@
+import Control.Monad
+import Network.RTorrent
+
+main :: IO ()
+main = do
+    Right torrents <- callLocal . 'allTorrents' $ 
+                        'getName' '<+>' 'allFiles' ('getFilePath' '<+>' 'getFileSizeBytes')
+    let largeFiles = 
+                filter (\\(_ :*: _ :*: _ :*: size) -> size > 10^8)
+                . concatMap (\\(tName :*: fileList) -> 
+                                map ((:*:) tName) fileList) 
+                $ torrents
+    putStrLn "Large files:"
+    forM_ largeFiles $ \\(torrent :*: _ :*: fPath :*: _) ->
+        putStrLn $ "\\t" ++ torrent ++ ": " ++ fPath
+    let cmd (_ :*: fid :*: _ :*: _) = 'setFilePriority' 'FilePriorityHigh' fid
+    _ <- callLocal . map cmd $ largeFiles
+    return ()
+@
 -}
 
 module Network.RTorrent.RPC (
@@ -68,8 +72,8 @@ import qualified Data.ByteString.Lazy as LB
 import Network
 import Network.XmlRpc.Internals
 
-import Network.RTorrent.Commands (Command (Ret))
-import qualified Network.RTorrent.Commands as C
+import Network.RTorrent.Command (Command (Ret))
+import qualified Network.RTorrent.Command as C
 import Network.RTorrent.CommandList
 import Network.RTorrent.SCGI
 
