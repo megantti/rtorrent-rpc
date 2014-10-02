@@ -97,7 +97,7 @@ allTrackers :: (TrackerId -> TrackerAction a) -> TorrentId -> TorrentAction [Tra
 allTrackers t = fmap addId . (getHash <+> allToMulti (allT t))
   where
     addId (hash :*: trackers) = 
-        mapStrict id
+        forceFoldable
         $ zipWith (\index -> (:*:) (TrackerId hash index)) [0..] trackers 
     allT :: (TrackerId -> TrackerAction a) -> AllAction TrackerId a
     allT = AllAction (TrackerId (TorrentId "") 0) "t.multicall"

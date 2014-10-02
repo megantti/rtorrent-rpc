@@ -34,6 +34,7 @@ module Network.RTorrent.Torrent
   , getName
   , getPath
   , getTorrentDir
+  , setTorrentDir
   , getRatio
   , getFileCount
   )
@@ -138,6 +139,9 @@ getPath = simpleAction "d.get_base_path" []
 -- file resides.
 getTorrentDir :: TorrentId -> TorrentAction String
 getTorrentDir = simpleAction "d.get_directory" []
+
+setTorrentDir :: String -> TorrentId -> TorrentAction Int
+setTorrentDir dir = simpleAction "d.set_directory" [PString dir]
 
 getIsOpen :: TorrentId -> TorrentAction Bool
 getIsOpen = Action [("d.is_open", [])] (bool . single . single)

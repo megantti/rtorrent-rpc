@@ -25,7 +25,7 @@ module Network.RTorrent.Peer (
   , getPeerHash
   , getPeerIp
 
-  , getPeerClient
+  , getPeerClientVersion
   , getPeerUpRate
   , getPeerDownRate
   , getPeerUpTotal
@@ -63,7 +63,7 @@ instance NFData PeerId where
     rnf (PeerId tid i) = rnf tid `seq` rnf i
 
 data PeerInfo = PeerInfo {
-    peerClient :: !String
+    peerClientVersion :: !String
   , peerIp :: !String
   , peerUpRate :: !Int
   , peerDownRate :: !Int
@@ -94,8 +94,8 @@ getPeerHash = simpleAction "p.get_id" []
 getPeerIp :: PeerId -> PeerAction String
 getPeerIp = simpleAction "p.get_address" []
 
-getPeerClient :: PeerId -> PeerAction String
-getPeerClient = simpleAction "p.get_client_version" []
+getPeerClientVersion :: PeerId -> PeerAction String
+getPeerClientVersion = simpleAction "p.get_client_version" []
 
 getPeerUpRate :: PeerId -> PeerAction Int
 getPeerUpRate = simpleAction "p.get_up_rate" []
@@ -121,7 +121,7 @@ getPeerPort = simpleAction "p.get_port" []
 -- | Get a partial peer. @PeerId@ can be gotten by running @allPeers@.
 getPeerPartial :: PeerId -> PeerAction (PeerId -> PeerInfo)
 getPeerPartial = runActionB $ PeerInfo
-         <$> b getPeerClient
+         <$> b getPeerClientVersion
          <*> b getPeerIp
          <*> b getPeerUpRate
          <*> b getPeerDownRate

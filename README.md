@@ -42,6 +42,6 @@ main = do
     forM_ largeFiles $ \(torrent :*: _ :*: fPath :*: _) ->
         putStrLn $ "\t" ++ torrent ++ ": " ++ fPath
     let cmd (_ :*: fid :*: _ :*: _) = setFilePriority FilePriorityHigh fid
-    _ <- callLocal . map cmd $ largeFiles
+    _ <- callLocal $ map cmd largeFiles
     return ()
 ```

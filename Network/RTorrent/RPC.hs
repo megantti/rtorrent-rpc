@@ -39,7 +39,7 @@ main = do
     Right torrents <- callLocal . 'allTorrents' $ 
                         'getName' '<+>' 'allFiles' ('getFilePath' '<+>' 'getFileSizeBytes')
     let largeFiles = 
-                filter (\\(_ :*: _ :*: _ :*: size) -> size > 10^8)
+                filter (\\(_ ':*:' _ ':*:' _ ':*:' size) -> size > 10^8)
                 . concatMap (\\(tName :*: fileList) -> 
                                 map ((:*:) tName) fileList) 
                 $ torrents
@@ -47,7 +47,7 @@ main = do
     forM_ largeFiles $ \\(torrent :*: _ :*: fPath :*: _) ->
         putStrLn $ "\\t" ++ torrent ++ ": " ++ fPath
     let cmd (_ :*: fid :*: _ :*: _) = 'setFilePriority' 'FilePriorityHigh' fid
-    _ <- callLocal . map cmd $ largeFiles
+    _ <- callLocal $ map cmd largeFiles
     return ()
 @
 -}
@@ -118,8 +118,9 @@ callCommand = callCommandEvalWith id
 -- or when you aren't sure about the strictness properties of
 -- your code.
 --
--- The other choice is to ensure that lists get completely evaluted
--- by using 'mapStrict', for example by calling @mapStrict id@ on the list.
+-- The other choice is to ensure that the elements
+-- in lazy data structures like lists get evaluated 
+-- for example by using 'forceFoldable'.
 callCommandEval :: (Command a, NFData (Ret a)) => 
     HostName -- ^ Hostname
     -> Int  -- ^ Port

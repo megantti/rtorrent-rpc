@@ -21,6 +21,7 @@ module Network.RTorrent.Action (
     -- * Internal
     , AllAction (..)
     , allToMulti 
+    , forceFoldable
 ) where
 
 import Control.Applicative
@@ -112,7 +113,7 @@ instance XmlRpcType Param where
 
 -- | Sequence multiple actions, for example with @f = []@.
 sequenceActions :: Traversable f => f (i -> Action i a) -> i -> Action i (f a)
-sequenceActions = runActionB . traverse ActionB
+sequenceActions = fmap (fmap forceFoldable) . runActionB . traverse ActionB
 
 infixr 6 <+>
 -- | Combine two actions to get a new one.

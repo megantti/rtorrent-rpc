@@ -14,6 +14,7 @@ module Network.RTorrent.Command (
       (:*:)(..)
     , Command (Ret, commandCall, commandValue, levels) 
 
+    , forceFoldable
     , mapStrict
     -- * AnyCommand
 
@@ -32,6 +33,8 @@ import Control.Applicative
 import Control.DeepSeq
 import Control.Monad.Error
 import Control.Monad.Identity
+
+import qualified Data.Foldable as F
 
 import Data.List.Split (splitPlaces)
 
@@ -111,6 +114,10 @@ mapStrict f = go
     go [] = []
     go (a:as) = ((:) $! f a) $! go as
 
+-- | Evaluates all elements of a 'Foldable' to WHNF.
+forceFoldable :: F.Foldable f => f a -> f a
+forceFoldable f = F.foldl1 seq f `seq` f
+
 -- | A newtype wrapper for method calls. 
 -- 
 -- You shouldn't directly use the constructor 
@@ -160,7 +167,7 @@ instance Command a => Command [a] where
                 . concatMap ( getArray 
                             . runRTMethodCall . commandCall)
     commandValue cmds = 
-        mapStrict id
+        forceFoldable
         . zipWith (\cmd -> commandValue cmd . ValueArray) cmds
         . splitPlaces (map levels cmds) 
         . getArray 

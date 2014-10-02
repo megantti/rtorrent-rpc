@@ -51,6 +51,7 @@ module Network.RTorrent.CommandList
   , (:*:)(..)
   , AnyCommand (..)
   , Command (Ret)
+  , forceFoldable
   , mapStrict
   )
   where
