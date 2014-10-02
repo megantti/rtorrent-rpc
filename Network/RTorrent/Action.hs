@@ -24,7 +24,6 @@ module Network.RTorrent.Action (
     , allToMulti 
 ) where
 
-import Control.DeepSeq
 import Control.Applicative
 
 import Data.Monoid
@@ -50,7 +49,7 @@ newtype ActionB i a = ActionB { runActionB :: i -> Action i a}
 -- 
 -- Watch out for using @Bool@ as @a@ since using it with this function will probably result in an exception.
 -- One workaround is to get an @Int@ and use @Bool@'s @Enum@ instance.
-simpleAction :: (XmlRpcType a, NFData a) => 
+simpleAction :: XmlRpcType a => 
        String
     -> [Param] 
     -> i
@@ -152,7 +151,7 @@ allToMulti (AllAction emptyId multicall action) =
   where 
     Action cmds parse _ = action emptyId
     
-instance NFData a => Command (AllAction i a) where
+instance Command (AllAction i a) where
     type Ret (AllAction i a) = [a]
     commandCall (AllAction emptyId multicall action) = 
                       mkRTMethodCall multicall
@@ -163,7 +162,7 @@ instance NFData a => Command (AllAction i a) where
         Action cmds _ _ = action emptyId
 
     commandValue (AllAction emptyId _ action) = 
-        force . map parse . wrapForParse
+        mapStrict parse . wrapForParse
       where
         Action _ parse _ = action emptyId
 

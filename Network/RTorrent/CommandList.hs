@@ -51,7 +51,6 @@ module Network.RTorrent.CommandList
   )
   where
 
-import Control.DeepSeq
 import Network.XmlRpc.Internals
 
 import Data.ByteString (ByteString)
@@ -65,11 +64,11 @@ import Network.RTorrent.Priority
 import Network.RTorrent.TorrentCommand
 
 -- | Run a command with no arguments.
-runSimple :: (XmlRpcType a, NFData a) => String -> Global a
+runSimple :: XmlRpcType a => String -> Global a
 runSimple = runArgs []
 
 -- | Run a command with the given arguments.
-runArgs :: (XmlRpcType a, NFData a) => [Value] -> String -> Global a
+runArgs :: XmlRpcType a => [Value] -> String -> Global a
 runArgs = Global parseSingle
 
 -- | Get the current up rate, in bytes per second.

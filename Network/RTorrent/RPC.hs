@@ -1,3 +1,5 @@
+{-# LANGUAGE FlexibleContexts #-}
+
 {-|
 Module      : RPC
 Copyright   : (c) Kai Lindholm, 2014
@@ -49,12 +51,14 @@ sets their priorities to high.
 module Network.RTorrent.RPC (
       module Network.RTorrent.CommandList
     , callCommand 
+    , callCommand'
     , callLocal
 
     , Command (Ret)
     ) where
 
 import Control.Applicative
+import Control.DeepSeq
 import Control.Exception
 import Control.Monad.Trans
 import Control.Monad.Error (ErrorT(..), throwError, strMsg)
@@ -83,6 +87,18 @@ callRTorrent host port calls = do
   where
     call = MethodCall "system.multicall" [C.runRTMethodCall calls]
 
+callCommandEval :: Command a =>
+    (Ret a -> Ret a)
+    -> HostName
+    -> Int
+    -> a 
+    -> IO (Either String (Ret a))
+callCommandEval eval host port command = 
+    handleException $ runErrorT . (>>= lift . evaluate . eval) $ 
+        C.commandValue command <$> callRTorrent host port (C.commandCall command)
+  where
+    handleException f = catch f (\e -> return . Left . show $ (e :: SomeException))
+
 -- | Call RTorrent with a command.
 -- Only one connection is opened even when using ':*:' to combine commands.
 callCommand :: Command a => 
@@ -90,10 +106,15 @@ callCommand :: Command a =>
     -> Int  -- ^ Port
     -> a -- ^ Command to send to RTorrent
     -> IO (Either String (Ret a))
-callCommand host port command = handleException $ runErrorT . (>>= lift . evaluate) $ 
-    C.commandValue command <$> callRTorrent host port (C.commandCall command)
-  where
-    handleException f = catch f (\e -> return . Left . show $ (e :: SomeException))
+callCommand = callCommandEval id
+
+-- | Like callCommand, but evaluates its result completely.
+callCommand' :: (Command a, NFData (Ret a)) => 
+    HostName -- ^ Hostname
+    -> Int  -- ^ Port
+    -> a -- ^ Command to send to RTorrent
+    -> IO (Either String (Ret a))
+callCommand' = callCommandEval force
 
 -- | 
 -- > callLocal = callCommand "localhost" 5000

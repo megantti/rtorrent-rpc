@@ -25,6 +25,7 @@ module Network.RTorrent.Commands (
     , parseSingle
     , getArray, single
     , bool
+    , mapStrict
 ) where
 
 import Control.Applicative
@@ -92,15 +93,22 @@ bool (ValueInt 1) = True
 bool (ValueBool b) = b
 bool v = error $ "Failed to match a bool, got: " ++ show v
 
-parseValue :: (NFData a, XmlRpcType a) => Value -> a
-parseValue = force . fromRight . runIdentity . runErrorT . fromValue 
+parseValue :: (XmlRpcType a) => Value -> a
+parseValue = fromRight . runIdentity . runErrorT . fromValue 
   where
     fromRight (Right r) = r
     fromRight (Left e) = error $ "parseValue failed: " ++ e
 
 -- | Parse a value wrapped in two singleton arrays.
-parseSingle :: (XmlRpcType a, NFData a) => Value -> a
+parseSingle :: XmlRpcType a => Value -> a
 parseSingle = parseValue . single . single
+
+-- | Map that is very strict: it evaluates all of its elements to WNHF.
+mapStrict :: (a -> b) -> [a] -> [b]
+mapStrict f = go
+  where
+    go [] = []
+    go (a:as) = ((:) $! f a) $! go as
 
 -- | A newtype wrapper for method calls. 
 -- 
@@ -142,7 +150,7 @@ data AnyCommand where
 instance Command AnyCommand where
     type Ret AnyCommand = Value
     commandCall (AnyCommand cmd) = commandCall cmd
-    commandValue _ = single
+    commandValue _ = single . single
     levels (AnyCommand cmd) = levels cmd
 
 instance Command a => Command [a] where
@@ -150,8 +158,10 @@ instance Command a => Command [a] where
     commandCall = RTMethodCall . ValueArray 
                 . concatMap ( getArray 
                             . runRTMethodCall . commandCall)
-    commandValue cmds = zipWith (\cmd -> commandValue cmd . ValueArray) cmds
-                                       . splitPlaces (map levels cmds) 
-                                       . getArray 
+    commandValue cmds = 
+        mapStrict id
+        . zipWith (\cmd -> commandValue cmd . ValueArray) cmds
+        . splitPlaces (map levels cmds) 
+        . getArray 
     levels = sum . map levels 
 
