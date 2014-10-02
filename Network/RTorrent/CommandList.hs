@@ -39,6 +39,8 @@ module Network.RTorrent.CommandList
 
   , runSimple
   , runArgs
+  , runInt
+  , runString
 
   -- * Re-exported from "Network.RTorrent.Action"
   , (<+>)
@@ -47,6 +49,7 @@ module Network.RTorrent.CommandList
   -- * Re-exported from "Network.RTorrent.Command"
   , (:*:)(..)
   , AnyCommand (..)
+  , Command (Ret)
   )
   where
 
@@ -63,11 +66,22 @@ import Network.RTorrent.Priority
 
 -- | Run a command with no arguments.
 runSimple :: XmlRpcType a => String -> Global a
-runSimple = runArgs []
+runSimple cmd = runArgs cmd []
 
 -- | Run a command with the given arguments.
-runArgs :: XmlRpcType a => [Value] -> String -> Global a
-runArgs = Global parseSingle
+runArgs :: XmlRpcType a => String -> [Value] -> Global a
+runArgs = flip $ Global parseSingle
+
+-- | Run a command with the @Int@ given as an argument.
+runInt :: XmlRpcType a => String -> Int -> Global a
+runInt cmd i = runArgs cmd [ValueInt i]
+
+-- | Run a command with the @String@ given as an argument.
+runString :: XmlRpcType a => 
+    String  -- ^ Command
+    -> String -- ^ Argument
+    -> Global a
+runString cmd s = runArgs cmd [ValueString s]
 
 -- | Get the current up rate, in bytes per second.
 getUpRate :: Global Int
@@ -95,11 +109,11 @@ getDownloadRate = runSimple "get_download_rate"
 
 -- | Set the maximum upload rate, in bytes per second.
 setUploadRate :: Int -> Global Int
-setUploadRate i = Global parseSingle [ValueInt i] "set_upload_rate"
+setUploadRate = runInt "set_upload_rate"
 
 -- | Set the maximum download rate, in bytes per second.
 setDownloadRate :: Int -> Global Int
-setDownloadRate i = Global parseSingle [ValueInt i] "set_download_rate"
+setDownloadRate = runInt "set_download_rate"
 
 -- | Get the process id.
 getPid :: Global Int
@@ -108,22 +122,22 @@ getPid = runSimple "system.pid"
 -- | Load a torrent file.
 loadTorrent :: String -- ^ A path / URL
         -> Global Int
-loadTorrent path = Global parseSingle [ValueString path] "load"
+loadTorrent = runString "load"
 
 -- | Load a torrent file.
 loadTorrentRaw :: ByteString -- ^ A torrent file as data
         -> Global Int
-loadTorrentRaw torrentData = Global parseSingle [ValueBase64 torrentData] "load_raw"
+loadTorrentRaw torrentData = runArgs "load_raw" [ValueBase64 torrentData] 
 
 -- | Load a torrent file and start downloading it.
 loadStartTorrent :: String -- ^ A path / URL
         -> Global Int
-loadStartTorrent path = Global parseSingle [ValueString path] "load_start"
+loadStartTorrent = runString "load_start"
 
 -- | Load a torrent file and start downloading it.
 loadStartTorrentRaw :: ByteString -- ^ A torrent file as data
         -> Global Int
-loadStartTorrentRaw torrentData = Global parseSingle [ValueBase64 torrentData] "load_raw_start"
+loadStartTorrentRaw torrentData = runArgs "load_raw_start" [ValueBase64 torrentData] 
     
 
 -- | Execute a command with a result type @t@.

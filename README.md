@@ -26,9 +26,8 @@ As a more complete example, the following code finds all files that are over
 sets their priorities to high.
 
 ```haskell
-import Network.RTorrent
-
 import Control.Monad
+import Network.RTorrent
 
 main :: IO ()
 main = do

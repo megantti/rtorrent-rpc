@@ -57,8 +57,6 @@ module Network.RTorrent.RPC (
     , callCommand 
     , callCommand'
     , callLocal
-
-    , Command (Ret)
     ) where
 
 import Control.Applicative
