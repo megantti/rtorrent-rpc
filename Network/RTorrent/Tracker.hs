@@ -30,7 +30,7 @@ module Network.RTorrent.Tracker (
 import Control.Applicative
 import Control.DeepSeq
 
-import Network.RTorrent.Action
+import Network.RTorrent.Action.Internals
 import Network.RTorrent.Torrent
 import Network.RTorrent.Command
 import Network.XmlRpc.Internals
@@ -41,13 +41,12 @@ data TrackerId = TrackerId !TorrentId !Int deriving Show
 
 instance XmlRpcType TrackerId where
     toValue (TrackerId (TorrentId tid) i) = ValueString $ tid ++ ":t" ++ show i
-    fromValue v = return . uncurry TrackerId . parse =<< fromValue v
+    fromValue v = return . uncurry TrackerId =<< parse =<< fromValue v
       where
-        parse :: String -> (TorrentId, Int)
-        parse str = (TorrentId hash, read i)
-          where
-            [hash, i] = splitOn ":t" str
-
+        parse :: Monad m => String -> m (TorrentId, Int)
+        parse str = do
+            [hash, i] <- return $ splitOn ":t" str
+            return (TorrentId hash, read i)
     getType _ = TString
 
 data TrackerType = 
@@ -68,17 +67,21 @@ instance Enum TrackerType where
 
 instance XmlRpcType TrackerType where
     toValue = toValue . fromEnum
-    fromValue v = return . toEnum =<< fromValue v
+    fromValue v = return . toEnum =<< check =<< fromValue v
+      where
+        check i 
+          | 1 <= i && i <= 3 = return i
+          | otherwise = fail $ "Invalid TrackerType, got : " ++ show i
     getType _ = TInt
 
 instance NFData TrackerType
 
 data TrackerInfo = TrackerInfo {
-    trackerUrl :: !String
+    trackerUrl :: String
   , trackerType :: !TrackerType
   , trackerEnabled :: !Bool
   , trackerOpen :: !Bool
-  , trackerId :: !TrackerId
+  , trackerId :: TrackerId
 } deriving Show
 
 instance NFData TrackerId where
@@ -99,8 +102,7 @@ allTrackers :: (TrackerId -> TrackerAction a) -> TorrentId -> TorrentAction [Tra
 allTrackers t = fmap addId . (getTorrentId <+> allToMulti (allT t))
   where
     addId (hash :*: trackers) = 
-        forceFoldable
-        $ zipWith (\index -> (:*:) (TrackerId hash index)) [0..] trackers 
+        zipWith (\index -> (:*:) (TrackerId hash index)) [0..] trackers 
     allT :: (TrackerId -> TrackerAction a) -> AllAction TrackerId a
     allT = AllAction (TrackerId (TorrentId "") 0) "t.multicall"
 
@@ -130,7 +132,7 @@ getTrackerPartial = runActionB $ TrackerInfo
     b = ActionB
 
 getTorrentTrackers :: TorrentId -> TorrentAction [TrackerInfo]
-getTorrentTrackers = fmap (mapStrict contract) . allTrackers getTrackerPartial
+getTorrentTrackers = fmap (map contract) . allTrackers getTrackerPartial
   where
     contract (x :*: f) = f x
 

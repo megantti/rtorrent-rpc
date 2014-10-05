@@ -26,6 +26,15 @@ Int
 
 assuming you have set @scgi_port = localhost:5000@ in your @.rtorrent.rc@.
 
+Note that ':*:' is both a data constructor and a type constructor,
+and therefore:
+
+>>> :t True :*: False
+Bool :*: Bool
+
+However, using @:*:@ in types needs the @TypeOperators@ extension to work.
+
+
 As a more complete example, the following code finds all files that are over
 100 megabytes, prints them along with the torrent they belong to and 
 sets their priorities to high.
@@ -55,13 +64,8 @@ main = do
 module Network.RTorrent.RPC (
       module Network.RTorrent.CommandList
     , callRTorrent 
-    , callRTorrentEval
     ) where
 
-import Control.Applicative
-import Control.DeepSeq
-import Control.Exception
-import Control.Monad.Trans
 import Control.Monad.Error (ErrorT(..), throwError, strMsg)
 import Data.Monoid
 import qualified Data.ByteString as BS
@@ -69,7 +73,7 @@ import qualified Data.ByteString.Lazy as LB
 import Network
 import Network.XmlRpc.Internals
 
-import qualified Network.RTorrent.Command as C
+import qualified Network.RTorrent.Command.Internals as C
 import Network.RTorrent.CommandList
 import Network.RTorrent.SCGI
 
@@ -87,33 +91,14 @@ callRTorrentRaw host port calls = do
   where
     call = MethodCall "system.multicall" [C.runRTMethodCall calls]
 
-callRTorrentEvalWith :: Command a =>
-    (Ret a -> Ret a)
-    -> HostName
+-- | Call RTorrent with a command.
+-- Only one connection is opened even when combining commands
+-- for example by using ':*:' or lists.
+callRTorrent :: Command a =>
+    HostName
     -> Int
     -> a 
     -> IO (Either String (Ret a))
-callRTorrentEvalWith eval host port command = 
-    handleException $ runErrorT . (>>= lift . evaluate . eval) $ 
-        C.commandValue command <$> callRTorrentRaw host port (C.commandCall command)
-  where
-    handleException f = catch f (\e -> return . Left . show $ (e :: SomeException))
-
--- | Call RTorrent with a command.
--- Only one connection is opened even when using combinators
--- like ':*:' to combine commands.
-callRTorrent :: Command a => 
-    HostName -- ^ Hostname
-    -> Int  -- ^ Port
-    -> a -- ^ Command to send to RTorrent
-    -> IO (Either String (Ret a))
-callRTorrent = callRTorrentEvalWith id
-
--- | Like callRTorrent, but evaluates its result completely.
-callRTorrentEval :: (Command a, NFData (Ret a)) => 
-    HostName -- ^ Hostname
-    -> Int  -- ^ Port
-    -> a -- ^ Command to send to RTorrent
-    -> IO (Either String (Ret a))
-callRTorrentEval = callRTorrentEvalWith force
-
+callRTorrent host port command = 
+    runErrorT $ 
+        C.commandValue command =<< callRTorrentRaw host port (C.commandCall command)

@@ -40,7 +40,7 @@ module Network.RTorrent.Peer (
 import Control.Applicative
 import Control.DeepSeq
 
-import Network.RTorrent.Action
+import Network.RTorrent.Action.Internals
 import Network.RTorrent.Torrent
 import Network.RTorrent.Command
 import Network.XmlRpc.Internals
@@ -52,21 +52,20 @@ data PeerId = PeerId !TorrentId !String
 
 instance XmlRpcType PeerId where
     toValue (PeerId (TorrentId tid) i) = ValueString $ tid ++ ":p" ++ i
-    fromValue v = return . uncurry PeerId . parse =<< fromValue v
+    fromValue v = return . uncurry PeerId =<< parse =<< fromValue v
       where
-        parse :: String -> (TorrentId, String)
-        parse str = (TorrentId hash, peerhash)
-          where
-            [hash, peerhash] = splitOn ":p" str
-
+        parse :: Monad m => String -> m (TorrentId, String)
+        parse str = do
+            [hash, s] <- return $ splitOn ":p" str
+            return (TorrentId hash, s)
     getType _ = TString
 
 instance NFData PeerId where
     rnf (PeerId tid i) = rnf tid `seq` rnf i
 
 data PeerInfo = PeerInfo {
-    peerClientVersion :: !String
-  , peerIp :: !String
+    peerClientVersion :: String
+  , peerIp :: String
   , peerUpRate :: !Int
   , peerDownRate :: !Int
   , peerUpTotal :: !Int
@@ -74,7 +73,7 @@ data PeerInfo = PeerInfo {
   , peerEncrypted :: !Bool
   , peerCompletedPercent :: !Int
   , peerPort :: !Int
-  , peerId :: !PeerId
+  , peerId :: PeerId
 } deriving Show
 
 instance NFData PeerInfo where
@@ -144,7 +143,7 @@ banPeer = simpleAction "p.banned.set" [PInt 1]
 type PeerAction = Action PeerId
 
 getTorrentPeers :: TorrentId -> TorrentAction [PeerInfo]
-getTorrentPeers = fmap (mapStrict contract) . allPeers getPeerPartial
+getTorrentPeers = fmap (map contract) . allPeers getPeerPartial
   where
     contract (x :*: f) = f x
 
@@ -153,6 +152,6 @@ allPeers :: (PeerId -> PeerAction a) -> TorrentId -> TorrentAction [PeerId :*: a
 allPeers p = fmap addId . (getTorrentId <+> allToMulti (allP (getPeerHash <+> p)))
   where
     addId (hash :*: peers) = 
-        mapStrict (\(phash :*: f) -> PeerId hash phash :*: f) peers
+        map (\(phash :*: f) -> PeerId hash phash :*: f) peers
     allP :: (PeerId -> PeerAction a) -> AllAction PeerId a
     allP = AllAction (PeerId (TorrentId "") "") "p.multicall"

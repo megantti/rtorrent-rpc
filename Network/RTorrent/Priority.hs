@@ -37,7 +37,11 @@ instance Enum TorrentPriority where
 
 instance XmlRpcType TorrentPriority where
     toValue = toValue . fromEnum
-    fromValue v = return . toEnum =<< fromValue v
+    fromValue v = return . toEnum =<< check =<< fromValue v
+      where
+        check i 
+          | 0 <= i && i <= 3 = return i
+          | otherwise = fail $ "Invalid TorrentPriority, got : " ++ show i
     getType _ = TInt
 
 data FilePriority = 
@@ -60,5 +64,9 @@ instance Enum FilePriority where
 
 instance XmlRpcType FilePriority where
     toValue = toValue . fromEnum
-    fromValue v = return . toEnum =<< fromValue v
+    fromValue v = return . toEnum =<< check =<< fromValue v
+      where
+        check i 
+          | 0 <= i && i <= 2 = return i
+          | otherwise = fail $ "Invalid FilePriority, got : " ++ show i
     getType _ = TInt

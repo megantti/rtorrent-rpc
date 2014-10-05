@@ -45,8 +45,7 @@ import Control.Applicative
 import Control.DeepSeq
 import Network.XmlRpc.Internals
 
-import Network.RTorrent.Action
-import Network.RTorrent.Command
+import Network.RTorrent.Action.Internals
 import Network.RTorrent.Priority
 
 -- | A newtype wrapper for torrent identifiers.
@@ -64,15 +63,15 @@ instance XmlRpcType TorrentId where
     getType _ = TString
 
 data TorrentInfo = TorrentInfo {
-      torrentId :: !TorrentId
-    , torrentName :: !String
+      torrentId :: TorrentId
+    , torrentName :: String
     , torrentOpen :: !Bool
     , torrentDownRate :: !Int
     , torrentUpRate :: !Int
     , torrentSize :: !Int
     , torrentBytesLeft :: !Int
-    , torrentPath :: !String
-    , torrentDir :: !String
+    , torrentPath :: String
+    , torrentDir :: String
     , torrentTorrentPriority :: !TorrentPriority
     } deriving Show
 
@@ -144,7 +143,7 @@ setTorrentDir :: String -> TorrentId -> TorrentAction Int
 setTorrentDir dir = simpleAction "d.set_directory" [PString dir]
 
 getTorrentOpen :: TorrentId -> TorrentAction Bool
-getTorrentOpen = Action [("d.is_open", [])] (bool . single . single)
+getTorrentOpen = fmap toEnum . simpleAction "d.is_open" []
 
 getTorrentUpRate :: TorrentId -> TorrentAction Int
 getTorrentUpRate = simpleAction "d.get_up_rate" []

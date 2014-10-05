@@ -31,7 +31,7 @@ module Network.RTorrent.File (
 import Control.Applicative
 import Control.DeepSeq
 
-import Network.RTorrent.Action
+import Network.RTorrent.Action.Internals
 import Network.RTorrent.Torrent
 import Network.RTorrent.Command
 import Network.RTorrent.Priority
@@ -43,22 +43,21 @@ data FileId = FileId !TorrentId !Int deriving Show
 
 instance XmlRpcType FileId where
     toValue (FileId (TorrentId tid) i) = ValueString $ tid ++ ":f" ++ show i
-    fromValue v = return . uncurry FileId . parse =<< fromValue v
+    fromValue v = return . uncurry FileId =<< parse =<< fromValue v
       where
-        parse :: String -> (TorrentId, Int)
-        parse str = (TorrentId hash, read i)
-          where
-            [hash, i] = splitOn ":f" str
-
+        parse :: Monad m => String -> m (TorrentId, Int)
+        parse str = do
+            [hash, i] <- return $ splitOn ":f" str
+            return (TorrentId hash, read i)
     getType _ = TString
 
 data FileInfo = FileInfo {
-    filePath :: !String
+    filePath :: String
   , fileSizeBytes :: !Int
   , fileSizeChunks :: !Int
-  , fileCompeletedChunks :: !Int
+  , fileCompletedChunks :: !Int
   , filePriority :: !FilePriority
-  , fileId :: !FileId
+  , fileId :: FileId
 } deriving Show
 
 instance NFData FileId where
@@ -80,8 +79,7 @@ allFiles :: (FileId -> FileAction a) -> TorrentId -> TorrentAction [FileId :*: a
 allFiles f = fmap addId . (getTorrentId <+> allToMulti (allF f))
   where
     addId (hash :*: files) = 
-        mapStrict id
-        $ zipWith (\index -> (:*:) (FileId hash index)) [0..] files 
+        zipWith (\index -> (:*:) (FileId hash index)) [0..] files 
     allF :: (FileId -> FileAction a) -> AllAction FileId a
     allF = AllAction (FileId (TorrentId "") 0) "f.multicall"
 
@@ -120,7 +118,7 @@ getFilePartial = runActionB $ FileInfo
     b = ActionB
 
 getTorrentFiles :: TorrentId -> TorrentAction [FileInfo]
-getTorrentFiles = fmap (mapStrict contract) . allFiles getFilePartial
+getTorrentFiles = fmap (map contract) . allFiles getFilePartial
   where
     contract (x :*: f) = f x
 

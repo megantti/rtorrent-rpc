@@ -22,6 +22,17 @@ Int
 
 assuming you have set `scgi_port = localhost:5000` in your `.rtorrent.rc`.
 
+Note that `:*:` is both a data constructor and a type constructor,
+and therefore:
+
+```
+>>> :t True :*: False
+Bool :*: Bool
+```
+
+However, using `:*:` in types needs the `TypeOperators` extension to work.
+
+
 As a more complete example, the following code finds all files that are over
 100 megabytes, prints them along with the torrent they belong to and 
 sets their priorities to high.

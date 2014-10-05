@@ -1,5 +1,5 @@
 name:                rtorrent-rpc
-version:             0.1.0.0
+version:             0.2.0.0
 synopsis:            A library for communicating with RTorrent over its XML-RPC interface.
 -- description:         
 license:             MIT
@@ -17,9 +17,14 @@ library
   exposed-modules:     Network.RTorrent, Network.RTorrent.RPC, Network.RTorrent.CommandList, 
                        Network.RTorrent.Command, Network.RTorrent.Torrent, Network.RTorrent.File,
                        Network.RTorrent.Action, Network.RTorrent.Priority, Network.RTorrent.Peer, 
-                       Network.RTorrent.Tracker
+                       Network.RTorrent.Tracker, Network.RTorrent.Command.Internals,
+                       Network.RTorrent.Action.Internals
   other-modules:       Network.RTorrent.SCGI
-  other-extensions:    TypeFamilies, OverloadedStrings, TypeOperators, ScopedTypeVariables, GADTs, FlexibleContexts
-  build-depends:       base >=4.7 && <4.8, mtl >=2.1, bytestring >=0.10 && <0.11, network >=2.6, haxr >=3000.10 && <3000.11, blaze-builder >=0.3 && <0.4, blaze-textual >=0.2 && <0.3, attoparsec >=0.12 && <0.13, deepseq >= 1.3.0.0, split >=0.2.0.0
+  other-extensions:    TypeFamilies, OverloadedStrings, TypeOperators, ScopedTypeVariables, 
+                       GADTs, FlexibleContexts, RankNTypes
+  build-depends:       base >=4.7 && <4.8, mtl >=2.1, bytestring >=0.10 && <0.11, 
+                       network >=2.6, haxr >=3000.10 && <3000.11, blaze-builder >=0.3 && <0.4, 
+                       blaze-textual >=0.2 && <0.3, attoparsec >=0.12 && <0.13, deepseq >= 1.3.0.0, 
+                       split >=0.2.0.0
   -- hs-source-dirs:      
   default-language:    Haskell2010

@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeFamilies, RankNTypes #-}
 
 {-|
 Module      : Commands
@@ -51,22 +51,22 @@ module Network.RTorrent.CommandList
   -- * Re-exported from "Network.RTorrent.Action"
   , (<+>)
   , sequenceActions
-  , simpleAction
+
   -- * Re-exported from "Network.RTorrent.Command"
   , (:*:)(..)
   , AnyCommand (..)
   , Command (Ret)
-  , forceFoldable
-  , mapStrict
   )
   where
 
 import Network.XmlRpc.Internals
 
+import Control.Applicative
+
 import Data.ByteString (ByteString)
 
 import Network.RTorrent.Action
-import Network.RTorrent.Command
+import Network.RTorrent.Command.Internals
 import Network.RTorrent.File
 import Network.RTorrent.Peer
 import Network.RTorrent.Priority
@@ -150,12 +150,12 @@ loadStartTorrentRaw torrentData = commandArgs "load_raw_start" [ValueBase64 torr
     
 
 -- | Execute a command with a result type @t@.
-data Global t = Global (Value -> t) [Value] String
+data Global t = Global (forall m. (Monad m, Applicative m) => Value -> m t) [Value] String
 instance Command (Global a) where
     type Ret (Global a) = a
     commandCall (Global _ args cmd) = mkRTMethodCall cmd args
     commandValue (Global parse _ _) = parse
 
 instance Functor Global where
-    fmap f (Global g args s) = Global (f . g) args s
+    fmap f (Global g args s) = Global (fmap f . g) args s
 
