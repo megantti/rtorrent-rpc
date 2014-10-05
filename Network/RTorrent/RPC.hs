@@ -13,7 +13,7 @@ For example, you can request torrent info and bandwidth usage:
 
 @
 result <- callRTorrent "localhost" 5000 $ 
-    'getTorrents' ':*:' 'getUpRate' ':*:' 'getDownRate'
+    'getTorrents' 'Network.RTorrent.Command.:*:' 'getUpRate' 'Network.RTorrent.Command.:*:' 'getDownRate'
 case result of 
   Right (torrentInfo :*: uploadRate :*: downloadRate) -> ...
 @
@@ -24,9 +24,9 @@ where
 >>> :t uploadRate
 Int
 
-assuming you have set @scgi_port = localhost:5000@ in your @.rtorrent.rc@.
+This requires you to have set @scgi_port = localhost:5000@ in your @.rtorrent.rc@.
 
-Note that ':*:' is both a data constructor and a type constructor,
+Note that 'Network.RTorrent.Command.:*:' is both a data constructor and a type constructor,
 and therefore:
 
 >>> :t True :*: False
@@ -40,24 +40,57 @@ As a more complete example, the following code finds all files that are over
 sets their priorities to high.
 
 @
+{&#45;\# LANGUAGE TypeOperators \#&#45;}
+
 import Control.Monad
 import Network.RTorrent
 
+-- This is an action, and they can be combined with ('<+>').
+torrentInfo :: 'TorrentId'
+                -> 'TorrentAction' (String :*: [FileId :*: String :*: Int])
+torrentInfo = 'getTorrentName' 
+               '<+>' 'allFiles' ('getFilePath' <+> 'getFileSizeBytes')
+
+    -- 'allFiles' takes a file action ('FileId' -> 'FileAction' a)
+    -- and returns a torrent action: TorrentId -> 'TorrentAction' [FileId :*: a].
+    -- Note that it automatically adds 'FileId's to all elements.
+
 main :: IO ()
 main = do
-    Right torrents <- callRTorrent "localhost" 5000 . 'allTorrents' $ 
-                        'getTorrentName' '<+>' 'allFiles' ('getFilePath' '<+>' 'getFileSizeBytes')
+    Right torrents <- callRTorrent "localhost" 5000 $
+                        'allTorrents' torrentInfo
     let largeFiles = 
-                filter (\\(_ ':*:' _ ':*:' _ ':*:' size) -> size > 10^8)
+                filter (\\(_ :*: _ :*: _ :*: size) -> size > 10^8)
                 . concatMap (\\(tName :*: fileList) -> 
                                 map ((:*:) tName) fileList) 
+                             -- Move the torrent name into the list
                 $ torrents
+
     putStrLn "Large files:"
     forM_ largeFiles $ \\(torrent :*: _ :*: fPath :*: _) ->
         putStrLn $ "\\t" ++ torrent ++ ": " ++ fPath
-    let cmd (_ :*: fid :*: _ :*: _) = 'setFilePriority' 'FilePriorityHigh' fid
-    _ <- callRTorrent "localhost" 5000 $ map cmd largeFiles
-    return ()
+
+    -- There is instance ('Network.RTorrent.Command.Command' a, 'Network.RTorrent.Command.Command' b) => 'Network.RTorrent.Command.Command' (a :*: b)
+    -- The return value for the command a is 'Network.RTorrent.Command.Ret' a, which is an associated type
+    -- in the Command type class.
+    -- The return value for the command a :*: b is Ret a :*: Ret b.
+                     
+    let cmd :: String :*: FileId :*: String :*: Int 
+                -> FileAction FilePriority :*: FileAction Int
+        cmd (_ :*: fid :*: _ :*: _) = 
+            'getFilePriority' fid :*: 'setFilePriority' 'FilePriorityHigh' fid
+
+            -- Get the old priority and set the new one to high.
+            -- setFilePriority returns a not-so-useful Int.
+
+    -- There is also an instance Command a => Command [a],
+    -- and the return value for [a] is [Ret a].
+    
+    Right ret <- callRTorrent "localhost" 5000 $ map cmd largeFiles
+
+    putStrLn "Old priorities:"
+    forM_ ret $ \\(oldPriority :*: _) -> do
+        putStrLn $ "\\t" ++ show oldPriority
 @
 -}
 
