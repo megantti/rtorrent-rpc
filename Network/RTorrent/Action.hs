@@ -32,7 +32,9 @@ callRTorrent "localhost" 5000 $ allTorrents getTorrentId
 will return a list of torrent ids.
 
 To call a action on other types of objects, you can use 'Network.RTorrent.Peer.allPeers',
-'Network.RTorrent.File.allFiles', or 'Network.RTorrent.Tracker.allTrackers', which will also return ids for each object.
+'Network.RTorrent.File.allFiles', or 'Network.RTorrent.Tracker.allTrackers',
+which will act on all peers, files, or trackers that are associated to a torrent.
+They will also return ids for each object.
 Then for example 
 
 > allFiles getFileSizeBytes :: TorrentId -> TorrentAction [FileId :*: Int]

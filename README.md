@@ -68,10 +68,10 @@ main = do
     forM_ largeFiles $ \(torrent :*: _ :*: fPath :*: _) ->
         putStrLn $ "\t" ++ torrent ++ ": " ++ fPath
 
-    -- There is instance (Command a, Command b) => Command (a :*: b)
-    -- The return value for the command a is Ret a, which is an associated type
+    -- There is instance (Command cmdA, Command cmdB) => Command (cmdA :*: cmdB)
+    -- The return value for the command cmdA is Ret cmdA, which is an associated type
     -- in the Command type class.
-    -- The return value for the command a :*: b is Ret a :*: Ret b.
+    -- The return value for the command cmdA :*: cmdB is Ret cmdA :*: Ret cmdB.
                      
     let cmd :: String :*: FileId :*: String :*: Int 
                 -> FileAction FilePriority :*: FileAction Int
