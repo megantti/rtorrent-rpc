@@ -46,6 +46,7 @@ import Control.DeepSeq
 import Network.XmlRpc.Internals
 
 import Network.RTorrent.Action.Internals
+import Network.RTorrent.Command.Internals
 import Network.RTorrent.Priority
 
 -- | A newtype wrapper for torrent identifiers.
@@ -128,16 +129,16 @@ getTorrentId :: TorrentId -> TorrentAction TorrentId
 getTorrentId = simpleAction "d.hash" []
 
 getTorrentName :: TorrentId -> TorrentAction String
-getTorrentName = simpleAction "d.get_name" []
+getTorrentName = fmap decodeUtf8 . simpleAction "d.get_name" []
 
 -- | Get the absolute path to the torrent's directory or file.
 getTorrentPath :: TorrentId -> TorrentAction String
-getTorrentPath = simpleAction "d.get_base_path" []
+getTorrentPath = fmap decodeUtf8 . simpleAction "d.get_base_path" []
 
 -- | Get the absolute path to the directory in which the torrent's directory or
 -- file resides.
 getTorrentDir :: TorrentId -> TorrentAction String
-getTorrentDir = simpleAction "d.get_directory" []
+getTorrentDir = fmap decodeUtf8 . simpleAction "d.get_directory" []
 
 setTorrentDir :: String -> TorrentId -> TorrentAction Int
 setTorrentDir dir = simpleAction "d.set_directory" [PString dir]

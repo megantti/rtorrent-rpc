@@ -100,6 +100,7 @@ module Network.RTorrent.RPC (
     ) where
 
 import Control.Monad.Error (ErrorT(..), throwError, strMsg)
+import Control.Exception
 import Data.Monoid
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LB
@@ -133,5 +134,9 @@ callRTorrent :: Command a =>
     -> a 
     -> IO (Either String (Ret a))
 callRTorrent host port command = 
-    runErrorT $ 
-        C.commandValue command =<< callRTorrentRaw host port (C.commandCall command)
+    (runErrorT $ do
+        ret <- callRTorrentRaw host port (C.commandCall command)
+        C.commandValue command ret) 
+        `catches` [ Handler (\e -> return . Left $ show (e :: IOException))
+                  , Handler (\e -> return . Left $ show (e :: PatternMatchFail))]
+    

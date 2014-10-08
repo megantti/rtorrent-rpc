@@ -102,7 +102,7 @@ getDownRate = commandSimple "get_down_rate"
 
 -- | Get the default download directory.
 getDirectory :: Global String
-getDirectory = commandSimple "get_directory"
+getDirectory = fmap decodeUtf8 $ commandSimple "get_directory"
 
 -- | Get the maximum upload rate, in bytes per second.
 --

@@ -23,12 +23,15 @@ module Network.RTorrent.Command.Internals (
     , getArray
     , getArray'
     , single
+    , decodeUtf8
 ) where
 
 import Control.Applicative
 import Control.DeepSeq
 import Control.Monad.Error
 import Control.Monad.Identity
+
+import qualified Codec.Binary.UTF8.String as U
 
 import Data.List.Split (splitPlaces)
 
@@ -100,6 +103,9 @@ parseValue = fromRight . runIdentity . runErrorT . fromValue
 -- | Parse a value wrapped in two singleton arrays.
 parseSingle :: (Monad m, XmlRpcType a) => Value -> m a
 parseSingle = parseValue <=< single <=< single
+
+decodeUtf8 :: String -> String
+decodeUtf8 = U.decodeString
 
 -- | A newtype wrapper for method calls. 
 -- 

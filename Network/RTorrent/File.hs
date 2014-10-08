@@ -33,7 +33,7 @@ import Control.DeepSeq
 
 import Network.RTorrent.Action.Internals
 import Network.RTorrent.Torrent
-import Network.RTorrent.Command
+import Network.RTorrent.Command.Internals
 import Network.RTorrent.Priority
 import Network.XmlRpc.Internals
 
@@ -85,11 +85,11 @@ allFiles f = fmap addId . (getTorrentId <+> allToMulti (allF f))
 
 -- | Get the file name relative to the torrent base directory.
 getFilePath :: FileId -> FileAction String
-getFilePath = simpleAction "f.path" []
+getFilePath = fmap decodeUtf8 . simpleAction "f.path" []
 
 -- | Get the absolute path.
 getFileAbsolutePath :: FileId -> FileAction String
-getFileAbsolutePath = simpleAction "f.frozen_path" []
+getFileAbsolutePath = fmap decodeUtf8 . simpleAction "f.frozen_path" []
 
 getFileSizeBytes :: FileId -> FileAction Int
 getFileSizeBytes = simpleAction "f.size_bytes" []
