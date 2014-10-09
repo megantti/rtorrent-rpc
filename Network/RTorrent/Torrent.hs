@@ -16,6 +16,8 @@ module Network.RTorrent.Torrent
   -- * Functions for handling torrents
   , start
   , close
+  , stop
+  , closeStop
   , erase
   , checkHash
   , getTorrent
@@ -112,6 +114,13 @@ start = simpleAction "d.start" []
 -- | Close a torrent. 
 close :: TorrentId -> TorrentAction Int
 close = simpleAction "d.close" []
+
+-- | Stop a torrent. 
+stop :: TorrentId -> TorrentAction Int
+stop = simpleAction "d.stop" []
+
+closeStop :: TorrentId -> TorrentAction Int
+closeStop = fmap (\(a :*: b) -> a + b) . (close <+> stop)
 
 -- | Erase a torrent. 
 erase :: TorrentId -> TorrentAction Int

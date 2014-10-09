@@ -1,5 +1,5 @@
 name:                rtorrent-rpc
-version:             0.2.0.1
+version:             0.2.1.0
 synopsis:            A library for communicating with RTorrent over its XML-RPC interface.
 description:         
     A library for communicating with RTorrent over its XML-RPC interface.
