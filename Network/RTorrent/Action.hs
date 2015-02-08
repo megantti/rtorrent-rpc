@@ -51,6 +51,7 @@ In order to write new actions, 'simpleAction' can be used.
 module Network.RTorrent.Action (
       Action 
     , simpleAction
+    , pureAction
 
     , sequenceActions
     , (<+>)

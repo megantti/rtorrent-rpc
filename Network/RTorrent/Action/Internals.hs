@@ -12,6 +12,7 @@ Stability   : experimental
 module Network.RTorrent.Action.Internals (
       Action (..)
     , simpleAction
+    , pureAction
 
     , sequenceActions
     , (<+>)
@@ -118,6 +119,10 @@ instance XmlRpcType Param where
 -- | Sequence multiple actions, for example with @f = []@.
 sequenceActions :: Traversable f => f (i -> Action i a) -> i -> Action i (f a)
 sequenceActions = runActionB . traverse ActionB
+
+-- | An action that does nothing but return the value.
+pureAction :: a -> i -> Action i a
+pureAction a = Action [] (const (return a))
 
 infixr 6 <+>
 -- | Combine two actions to get a new one.

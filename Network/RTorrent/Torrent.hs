@@ -1,6 +1,6 @@
 {-|
 Module      : Torrent
-Copyright   : (c) Kai Lindholm, 2014
+Copyright   : (c) Kai Lindholm, 2014-2015
 License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental
@@ -40,6 +40,9 @@ module Network.RTorrent.Torrent
   , setTorrentDir
   , getTorrentRatio
   , getTorrentFileCount
+  , getTorrentSizeChunks
+  , getTorrentChunks
+  , getTorrentChunkSize
   )
   where
 
@@ -49,6 +52,7 @@ import Network.XmlRpc.Internals
 
 import Network.RTorrent.Action.Internals
 import Network.RTorrent.Command.Internals
+import Network.RTorrent.Chunk
 import Network.RTorrent.Priority
 
 -- | A newtype wrapper for torrent identifiers.
@@ -120,7 +124,7 @@ stop :: TorrentId -> TorrentAction Int
 stop = simpleAction "d.stop" []
 
 closeStop :: TorrentId -> TorrentAction Int
-closeStop = fmap (\(a :*: b) -> a + b) . (close <+> stop)
+closeStop = fmap (\(a :*: b) -> a + b) . (stop <+> close)
 
 -- | Erase a torrent. 
 erase :: TorrentId -> TorrentAction Int
@@ -176,6 +180,23 @@ getTorrentRatio = simpleAction "d.get_ratio" []
 
 getTorrentFileCount :: TorrentId -> TorrentAction Int
 getTorrentFileCount = simpleAction "d.get_size_files" []
+
+-- | A total number of chunks.
+getTorrentSizeChunks :: TorrentId -> TorrentAction Int
+getTorrentSizeChunks = simpleAction "d.size_chunks" []
+
+-- | Get a list that shows which chunks of the torrent are recorded as completed.
+-- Will return 'Nothing' in the case that the torrent is closed.
+getTorrentChunks :: TorrentId -> TorrentAction (Maybe [Bool])
+getTorrentChunks = fmap combine . (getTorrentSizeChunks <+> chunks)
+  where
+    combine (count :*: ch) = convertChunksPad count ch
+    chunks :: TorrentId -> TorrentAction String
+    chunks = simpleAction "d.bitfield" []
+    
+-- | Get the size of a chunk.
+getTorrentChunkSize :: TorrentId -> TorrentAction Int
+getTorrentChunkSize = simpleAction "d.chunk_size" []
 
 -- | Execute a command on all torrents.
 -- For example the command

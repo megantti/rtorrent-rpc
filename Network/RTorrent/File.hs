@@ -26,6 +26,7 @@ module Network.RTorrent.File (
   , getFileCompletedChunks
   , getFilePriority
   , setFilePriority
+  , getFileOffset
 ) where
 
 import Control.Applicative
@@ -33,6 +34,7 @@ import Control.DeepSeq
 
 import Network.RTorrent.Action.Internals
 import Network.RTorrent.Torrent
+import Network.RTorrent.Chunk
 import Network.RTorrent.Command.Internals
 import Network.RTorrent.Priority
 import Network.XmlRpc.Internals
@@ -57,6 +59,7 @@ data FileInfo = FileInfo {
   , fileSizeChunks :: !Int
   , fileCompletedChunks :: !Int
   , filePriority :: !FilePriority
+  , fileOffset :: !Int
   , fileId :: FileId
 } deriving Show
 
@@ -64,12 +67,13 @@ instance NFData FileId where
     rnf (FileId tid i) = rnf tid `seq` rnf i
 
 instance NFData FileInfo where
-    rnf (FileInfo fid fp fsb fsc fcc fpt) = 
+    rnf (FileInfo fid fp fsb fsc fcc fo fpt) = 
               rnf fp 
         `seq` rnf fsb 
         `seq` rnf fsc
         `seq` rnf fcc
         `seq` rnf fpt
+        `seq` rnf fo
         `seq` rnf fid
 
 type FileAction = Action FileId
@@ -100,6 +104,11 @@ getFileSizeChunks = simpleAction "f.size_chunks" []
 getFileCompletedChunks :: FileId -> FileAction Int
 getFileCompletedChunks = simpleAction "f.completed_chunks" []
 
+-- | Get the offset of a file in a torrent,
+-- when chunks are interpreted as continuous data.
+getFileOffset :: FileId -> FileAction Int
+getFileOffset = simpleAction "f.offset" []
+
 getFilePriority :: FileId -> FileAction FilePriority
 getFilePriority = simpleAction "f.priority" []
 
@@ -114,6 +123,7 @@ getFilePartial = runActionB $ FileInfo
            <*> b getFileSizeChunks
            <*> b getFileCompletedChunks
            <*> b getFilePriority
+           <*> b getFileOffset 
   where
     b = ActionB
 
