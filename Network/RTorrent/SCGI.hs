@@ -59,12 +59,17 @@ parseResponse = parseBody
         mappend <$> A.takeTill (== '\r') <*> (("\r\n" *> pure "") <|> lineParser)
     headerParser = (,) <$> A.takeTill (==  ':') <*> (": " *> lineParser) 
 
+    takeUntil :: Parser a -> Parser b -> Parser ([a], b)
+    takeUntil a b = (end <$> b)
+                    <|> (cont <$> a <*> takeUntil a b)
+      where
+        end x = ([], x)
+        cont x (xs, y) = (x : xs, y)
+
     contentParser = "\r\n" *> A.takeByteString
     parseBody = do
-        header <- headerParser
-        (moreHeaders, [content]) <- 
-            partitionEithers <$> A.many' (A.eitherP headerParser contentParser)
-        return $ Body (header : moreHeaders) content
+        (headers, content) <- takeUntil headerParser contentParser
+        return $ Body headers content
 
 query :: HostName -> Int -> Body -> IO (Either String Body)
 query host port queryBody = do
