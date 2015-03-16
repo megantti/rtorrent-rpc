@@ -28,7 +28,7 @@ module Network.RTorrent.Command.Internals (
 
 import Control.Applicative
 import Control.DeepSeq
-import Control.Monad.Error
+import Control.Monad.Except
 import Control.Monad.Identity
 
 import qualified Codec.Binary.UTF8.String as U
@@ -95,7 +95,7 @@ single v@(ValueStruct vars) = maybe
 single v = fail $ "Failed to match a singleton array, got: " ++ show v
 
 parseValue :: (Monad m, XmlRpcType a) => Value -> m a
-parseValue = fromRight . runIdentity . runErrorT . fromValue 
+parseValue = fromRight . runIdentity . runExceptT . fromValue 
   where
     fromRight (Right r) = return r
     fromRight (Left e) = fail $ "parseValue failed: " ++ e

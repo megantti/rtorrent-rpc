@@ -99,7 +99,7 @@ module Network.RTorrent.RPC (
     , callRTorrent 
     ) where
 
-import Control.Monad.Error (ErrorT(..), throwError, strMsg)
+import Control.Monad.Except (ExceptT(..), throwError, runExceptT)
 import Control.Exception
 import Data.Monoid
 import qualified Data.ByteString as BS
@@ -111,17 +111,17 @@ import qualified Network.RTorrent.Command.Internals as C
 import Network.RTorrent.CommandList
 import Network.RTorrent.SCGI
 
-callRTorrentRaw :: HostName -> Int -> C.RTMethodCall -> ErrorT String IO Value
+callRTorrentRaw :: HostName -> Int -> C.RTMethodCall -> ExceptT String IO Value
 callRTorrentRaw host port calls = do
     let request = Body [] . mconcat . LB.toChunks $ renderCall call 
-    Body _ content <- ErrorT $ query host port request
+    Body _ content <- ExceptT $ query host port request
     let cs = map (toEnum . fromEnum) $ BS.unpack content
     response <- parseResponse cs
     case response of
         Return ret -> case ret of
             ValueArray arr -> return $ ValueArray arr
-            val -> throwError . strMsg $ "Got value of type " ++ show (getType val)
-        Fault code err -> throwError . strMsg $ show code ++ ": " ++ err
+            val -> throwError $ "Got value of type " ++ show (getType val)
+        Fault code err -> throwError $ show code ++ ": " ++ err
   where
     call = MethodCall "system.multicall" [C.runRTMethodCall calls]
 
@@ -134,7 +134,7 @@ callRTorrent :: Command a =>
     -> a 
     -> IO (Either String (Ret a))
 callRTorrent host port command = 
-    (runErrorT $ do
+    (runExceptT $ do
         ret <- callRTorrentRaw host port (C.commandCall command)
         C.commandValue command ret) 
         `catches` [ Handler (\e -> return . Left $ show (e :: IOException))
