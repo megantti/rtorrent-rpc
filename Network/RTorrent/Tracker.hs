@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeOperators, TypeFamilies #-}
+{-# LANGUAGE TypeOperators, TypeFamilies, DeriveGeneric #-}
 
 {-|
 Module      : Tracker
@@ -30,6 +30,8 @@ module Network.RTorrent.Tracker (
 import Control.Applicative
 import Control.DeepSeq
 
+import GHC.Generics hiding ((:*:))
+
 import Network.RTorrent.Action.Internals
 import Network.RTorrent.Torrent
 import Network.RTorrent.Command
@@ -53,7 +55,7 @@ data TrackerType =
       TrackerHTTP
     | TrackerUDP
     | TrackerDHT
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
 
 instance Enum TrackerType where
     toEnum 1 = TrackerHTTP

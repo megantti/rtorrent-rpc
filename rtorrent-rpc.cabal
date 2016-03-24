@@ -31,18 +31,18 @@ library
 
   other-modules:       Network.RTorrent.SCGI
   other-extensions:    TypeFamilies, OverloadedStrings, TypeOperators, ScopedTypeVariables, 
-                       GADTs, FlexibleContexts, RankNTypes
-  build-depends:       base >=4.7 && <4.8,
+                       GADTs, FlexibleContexts, RankNTypes, DeriveGeneric
+  build-depends:       base >=4.8 && <4.9,
                        mtl >=2.1 && <2.3,
                        bytestring >=0.10 && <0.11 ,
                        network >=2.6,
-                       haxr >=3000.10.4.2 && <3000.10.5,
-                       blaze-builder >=0.3 && <0.4,
+                       haxr,
+                       blaze-builder,
                        blaze-textual >=0.2 && <0.3,
-                       attoparsec >=0.12 && <0.13,
+                       attoparsec,
                        deepseq >= 1.3.0.0,
                        split >=0.2.0.0,
-                       utf8-string >= 0.3 && <0.4
+                       utf8-string
   -- hs-source-dirs:      
   default-language:    Haskell2010
   ghc-options:         -O2
