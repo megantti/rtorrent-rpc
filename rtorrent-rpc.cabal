@@ -26,10 +26,10 @@ library
                        Network.RTorrent.Peer
                        Network.RTorrent.Priority
                        Network.RTorrent.RPC
+                       Network.RTorrent.SCGI
                        Network.RTorrent.Torrent
                        Network.RTorrent.Tracker
 
-  other-modules:       Network.RTorrent.SCGI
   other-extensions:    TypeFamilies, OverloadedStrings, TypeOperators, ScopedTypeVariables,
                        GADTs, FlexibleContexts, RankNTypes, DeriveGeneric
   build-depends:       base >=4.8 && <4.9,

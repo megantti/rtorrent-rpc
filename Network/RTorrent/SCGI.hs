@@ -12,7 +12,7 @@ Stability   : experimental
 An internal module for establishing a connection with RTorrent.
 -}
 
-module Network.RTorrent.SCGI (Headers, Body(..), query) where
+module Network.RTorrent.SCGI (Headers, Body(..), query, makeRequest, parseResponse) where
 
 import Control.Applicative
 import Data.Either (partitionEithers)
@@ -36,9 +36,9 @@ data Body = Body {
 } deriving Show
 
 makeRequest :: Body -> ByteString
-makeRequest (Body hd bd) = res 
+makeRequest (Body hd bd) = res
   where
-    res = toByteString . mconcat $ [ 
+    res = toByteString . mconcat $ [
         integral len
       , fromChar ':'
       , fromByteString hdbs
@@ -46,8 +46,8 @@ makeRequest (Body hd bd) = res
       , fromByteString bd
       ]
     fromBS0 bs = fromWrite $ writeByteString bs <> writeWord8 0
-    hdbs = toByteString . mconcat $ 
-           (fromBS0 "CONTENT_LENGTH" <> integral (BS.length bd) <> fromWord8 0): 
+    hdbs = toByteString . mconcat $
+           (fromBS0 "CONTENT_LENGTH" <> integral (BS.length bd) <> fromWord8 0):
             map (\(a, b) -> fromBS0 a <> fromBS0 b) hd
     len = BS.length hdbs
 
@@ -55,9 +55,9 @@ parseResponse :: Parser Body
 parseResponse = parseBody
   where
     lineParser :: Parser ByteString
-    lineParser = 
+    lineParser =
         mappend <$> A.takeTill (== '\r') <*> (("\r\n" *> pure "") <|> lineParser)
-    headerParser = (,) <$> A.takeTill (==  ':') <*> (": " *> lineParser) 
+    headerParser = (,) <$> A.takeTill (==  ':') <*> (": " *> lineParser)
 
     takeUntil :: Parser a -> Parser b -> Parser ([a], b)
     takeUntil a b = (end <$> b)
@@ -74,6 +74,6 @@ parseResponse = parseBody
 query :: HostName -> Int -> Body -> IO (Either String Body)
 query host port queryBody = do
     h <- connectTo host (PortNumber (toEnum port))
-    BS.hPut h (makeRequest queryBody) 
+    BS.hPut h (makeRequest queryBody)
     A.parseOnly parseResponse <$> BS.hGetContents h
 
