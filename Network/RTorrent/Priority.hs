@@ -6,12 +6,15 @@ Maintainer  : megantti@gmail.com
 Stability   : experimental
 -}
 
+{-# LANGUAGE DeriveGeneric #-}
+
 module Network.RTorrent.Priority (
     TorrentPriority (..)
   , FilePriority (..)
 ) where
 
 import Control.DeepSeq
+import GHC.Generics (Generic)
 import Network.XmlRpc.Internals
 
 data TorrentPriority = 
@@ -19,7 +22,7 @@ data TorrentPriority =
     | TorrentPriorityLow
     | TorrentPriorityNormal
     | TorrentPriorityHigh
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Generic)
 
 instance NFData TorrentPriority
 
@@ -48,7 +51,7 @@ data FilePriority =
       FilePriorityOff
     | FilePriorityNormal
     | FilePriorityHigh
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Generic)
 
 instance NFData FilePriority
 
