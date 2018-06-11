@@ -10,8 +10,6 @@ packages:
 
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps: [
-  'haxr-3000.11.2',
-  'HaXml-1.25.3'
 ]
 
 # Override default flag values for local packages and extra-deps
