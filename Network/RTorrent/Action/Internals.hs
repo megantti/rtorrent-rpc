@@ -75,9 +75,11 @@ instance Applicative (ActionB i) where
         Action cmdsB pB _ = b tid
       in Action (cmdsA ++ cmdsB) (parse pA pB) tid
 
+instance Semigroup a => Semigroup (ActionB i a) where
+    (<>) = liftA2 (<>)
+
 instance Monoid a => Monoid (ActionB i a) where
     mempty = pure mempty
-    mappend = liftA2 mappend  
 
 instance XmlRpcType i => Command (Action i a) where
     type Ret (Action i a) = a
