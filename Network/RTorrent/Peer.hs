@@ -54,7 +54,7 @@ instance XmlRpcType PeerId where
     toValue (PeerId (TorrentId tid) i) = ValueString $ tid ++ ":p" ++ i
     fromValue v = return . uncurry PeerId =<< parse =<< fromValue v
       where
-        parse :: Monad m => String -> m (TorrentId, String)
+        parse :: MonadFail m => String -> m (TorrentId, String)
         parse str = do
             [hash, s] <- return $ splitOn ":p" str
             return (TorrentId hash, s)

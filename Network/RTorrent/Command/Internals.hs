@@ -65,7 +65,7 @@ instance (Command a, Command b) => Command (a :*: b) where
     levels (a :*: b) = levels a + levels b 
 
 -- Helpers for values
-getArray :: Monad m => Value -> m [Value]
+getArray :: MonadFail m => Value -> m [Value]
 getArray (ValueArray ar) = return ar
 getArray _ = fail "getArray in Network.RTorrent.Commands failed"
 
@@ -74,7 +74,7 @@ getArray' (ValueArray ar) = ar
 getArray' _ = error "getArray' in Network.RTorrent.Commands failed"
 
 -- | Extract a value from a singleton array.
-single :: Monad m => Value -> m Value
+single :: MonadFail m => Value -> m Value
 single (ValueArray [ar]) = return ar
 single v@(ValueStruct vars) = maybe 
     err
@@ -90,18 +90,19 @@ single v@(ValueStruct vars) = maybe
     int _ = err
     str (ValueString s) = return s
     str _ = err
-    err :: Monad m => m a
+    err :: MonadFail m => m a
     err = fail $ "Failed to match a singleton array, got: " ++ show v
 single v = fail $ "Failed to match a singleton array, got: " ++ show v
 
-parseValue :: (Monad m, XmlRpcType a) => Value -> m a
-parseValue = fromRight . runIdentity . runExceptT . fromValue 
+parseValue :: (MonadFail m, XmlRpcType a) => Value -> m a
+parseValue x =
+    runExceptT (fromValue x) >>= fromRight
   where
     fromRight (Right r) = return r
     fromRight (Left e) = fail $ "parseValue failed: " ++ e
 
 -- | Parse a value wrapped in two singleton arrays.
-parseSingle :: (Monad m, XmlRpcType a) => Value -> m a
+parseSingle :: (MonadFail m, XmlRpcType a) => Value -> m a
 parseSingle = parseValue <=< single <=< single
 
 decodeUtf8 :: String -> String
@@ -133,7 +134,7 @@ class Command a where
     -- | Construct a request.
     commandCall :: a -> RTMethodCall 
     -- | Parse the resulting value.
-    commandValue :: (Applicative m, Monad m) => 
+    commandValue :: (Applicative m, MonadFail m) => 
         a -> Value -> m (Ret a)
 
     levels :: a -> Int

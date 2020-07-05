@@ -150,7 +150,7 @@ loadStartTorrentRaw torrentData = commandArgs "load_raw_start" [ValueBase64 torr
     
 
 -- | Execute a command with a result type @t@.
-data Global t = Global (forall m. (Monad m, Applicative m) => Value -> m t) [Value] String
+data Global t = Global (forall m. (MonadFail m, Applicative m) => Value -> m t) [Value] String
 instance Command (Global a) where
     type Ret (Global a) = a
     commandCall (Global _ args cmd) = mkRTMethodCall cmd args

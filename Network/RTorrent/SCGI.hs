@@ -15,6 +15,7 @@ An internal module for establishing a connection with RTorrent.
 module Network.RTorrent.SCGI (Headers, Body(..), query, makeRequest, parseResponse) where
 
 import Control.Applicative
+import qualified Control.Exception as E
 import Data.Either (partitionEithers)
 import Data.Monoid
 
@@ -26,7 +27,8 @@ import qualified Data.Attoparsec.ByteString.Char8 as A
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 
-import Network
+import Network.Socket
+import System.IO
 
 type Headers = [(ByteString, ByteString)]
 
@@ -73,7 +75,14 @@ parseResponse = parseBody
 
 query :: HostName -> Int -> Body -> IO (Either String Body)
 query host port queryBody = do
-    h <- connectTo host (PortNumber (toEnum port))
-    BS.hPut h (makeRequest queryBody)
-    A.parseOnly parseResponse <$> BS.hGetContents h
-
+    let hints = defaultHints { addrSocketType = Stream }
+    addr <- head <$> getAddrInfo (Just hints) (Just host) (Just $ show port)
+    let open = do
+            sock <- socket
+                (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+            connect sock $ addrAddress addr
+            socketToHandle sock ReadWriteMode
+    let performQuery h = do
+            BS.hPut h (makeRequest queryBody)
+            A.parseOnly parseResponse <$> BS.hGetContents h
+    E.bracket open hClose performQuery

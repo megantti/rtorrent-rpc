@@ -45,7 +45,7 @@ instance XmlRpcType TrackerId where
     toValue (TrackerId (TorrentId tid) i) = ValueString $ tid ++ ":t" ++ show i
     fromValue v = return . uncurry TrackerId =<< parse =<< fromValue v
       where
-        parse :: Monad m => String -> m (TorrentId, Int)
+        parse :: MonadFail m => String -> m (TorrentId, Int)
         parse str = do
             [hash, i] <- return $ splitOn ":t" str
             return (TorrentId hash, read i)
