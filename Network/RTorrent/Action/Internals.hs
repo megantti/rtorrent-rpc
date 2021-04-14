@@ -27,7 +27,8 @@ module Network.RTorrent.Action.Internals (
 import Control.Applicative
 import Control.Monad
 
-import Data.Monoid
+import Data.Monoid hiding ((<>))
+import Data.Semigroup
 import Data.Traversable hiding (mapM)
 
 import Network.XmlRpc.Internals
@@ -38,7 +39,7 @@ import Network.RTorrent.Priority
 --
 -- @a@ is the return type.
 data Action i a 
-    = Action [(String, [Param])] (forall m. (Monad m, Applicative m) => Value -> m a) i
+    = Action [(String, [Param])] (forall m. (MonadFail m, Applicative m) => Value -> m a) i
 
 -- | Wrapper to get monoid and applicative instances.
 newtype ActionB i a = ActionB { runActionB :: i -> Action i a} 
@@ -65,7 +66,7 @@ instance Applicative (ActionB i) where
     pure a = ActionB $ Action [] (const (pure a))  
 
     (ActionB a) <*> (ActionB b) = ActionB $ \tid -> let 
-        parse :: (Monad m, Applicative m) => (Value -> m (a -> b)) -> (Value -> m a) -> Value -> m b
+        parse :: (MonadFail m, Applicative m) => (Value -> m (a -> b)) -> (Value -> m a) -> Value -> m b
         parse parseA parseB arr = do
             (valsA, valsB) <- splitAt len <$> getArray arr
             parseA (ValueArray valsA) 
@@ -75,9 +76,11 @@ instance Applicative (ActionB i) where
         Action cmdsB pB _ = b tid
       in Action (cmdsA ++ cmdsB) (parse pA pB) tid
 
+instance Semigroup a => Semigroup (ActionB i a) where
+    (<>) = liftA2 (<>)
+
 instance Monoid a => Monoid (ActionB i a) where
     mempty = pure mempty
-    mappend = liftA2 mappend  
 
 instance XmlRpcType i => Command (Action i a) where
     type Ret (Action i a) = a
@@ -113,7 +116,7 @@ instance XmlRpcType Param where
     toValue (PTorrentPriority p) = toValue p
     toValue (PFilePriority p) = toValue p
 
-    fromValue = fail "No fromValue for Params"
+    fromValue _ = fail "No fromValue for Params"
     getType _ = TUnknown
 
 -- | Sequence multiple actions, for example with @f = []@.
@@ -143,7 +146,7 @@ makeMultiCall = ("" :)
         go (x:xs) = shows x . (',' :) . go xs
         go [] = id
 
-wrapForParse :: Monad m => Value -> m [Value]
+wrapForParse :: MonadFail m => Value -> m [Value]
 wrapForParse = mapM ( 
                  return . ValueArray 
                  . map (ValueArray . (:[])) 

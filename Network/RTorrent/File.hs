@@ -47,7 +47,7 @@ instance XmlRpcType FileId where
     toValue (FileId (TorrentId tid) i) = ValueString $ tid ++ ":f" ++ show i
     fromValue v = return . uncurry FileId =<< parse =<< fromValue v
       where
-        parse :: Monad m => String -> m (TorrentId, Int)
+        parse :: MonadFail m => String -> m (TorrentId, Int)
         parse str = do
             [hash, i] <- return $ splitOn ":f" str
             return (TorrentId hash, read i)

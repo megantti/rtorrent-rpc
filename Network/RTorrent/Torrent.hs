@@ -57,7 +57,7 @@ import Network.RTorrent.Priority
 
 -- | A newtype wrapper for torrent identifiers.
 newtype TorrentId = TorrentId String 
-    deriving Show
+    deriving (Show, Eq)
 
 type TorrentAction = Action TorrentId
 
@@ -80,7 +80,7 @@ data TorrentInfo = TorrentInfo {
     , torrentPath :: String
     , torrentDir :: String
     , torrentTorrentPriority :: !TorrentPriority
-    } deriving Show
+    } deriving (Show, Eq)
 
 instance NFData TorrentInfo where
     rnf (TorrentInfo i a0 a1 a2 a3 a4 a5 a6 a7 a8) = 

@@ -12,9 +12,9 @@ This package can be used for communicating with RTorrent over its XML-RPC interf
 For example, you can request torrent info and bandwidth usage:
 
 @
-result <- callRTorrent "localhost" 5000 $ 
+result <- callRTorrent "localhost" 5000 $
     'getTorrents' 'Network.RTorrent.Command.:*:' 'getUpRate' 'Network.RTorrent.Command.:*:' 'getDownRate'
-case result of 
+case result of
   Right (torrentInfo :*: uploadRate :*: downloadRate) -> ...
 @
 where
@@ -36,7 +36,7 @@ However, using @:*:@ in types needs the @TypeOperators@ extension to work.
 
 
 As a more complete example, the following code finds all files that are over
-100 megabytes, prints them along with the torrent they belong to and 
+100 megabytes, prints them along with the torrent they belong to and
 sets their priorities to high.
 
 @
@@ -48,7 +48,7 @@ import Network.RTorrent
 -- This is an action, and they can be combined with ('<+>').
 torrentInfo :: 'TorrentId'
                 -> 'TorrentAction' (String :*: [FileId :*: String :*: Int])
-torrentInfo = 'getTorrentName' 
+torrentInfo = 'getTorrentName'
                '<+>' 'allFiles' ('getFilePath' '<+>' 'getFileSizeBytes')
 
     -- 'allFiles' takes a file action ('FileId' -> 'FileAction' a)
@@ -59,10 +59,10 @@ main :: IO ()
 main = do
     Right torrents <- callRTorrent "localhost" 5000 $
                         'allTorrents' torrentInfo
-    let largeFiles = 
+    let largeFiles =
                 filter (\\(_ :*: _ :*: _ :*: size) -> size > 10^8)
-                . concatMap (\\(tName :*: fileList) -> 
-                                map ((:*:) tName) fileList) 
+                . concatMap (\\(tName :*: fileList) ->
+                                map ((:*:) tName) fileList)
                              -- Move the torrent name into the list
                 $ torrents
 
@@ -74,10 +74,10 @@ main = do
     -- The return value for the command cmdA is 'Network.RTorrent.Command.Ret' cmdA, which is an associated type
     -- in the Command type class.
     -- The return value for the command cmdA :*: cmdB is Ret cmdA :*: Ret cmdB.
-                     
-    let cmd :: String :*: FileId :*: String :*: Int 
+
+    let cmd :: String :*: FileId :*: String :*: Int
                 -> FileAction FilePriority :*: FileAction Int
-        cmd (_ :*: fid :*: _ :*: _) = 
+        cmd (_ :*: fid :*: _ :*: _) =
             'getFilePriority' fid :*: 'setFilePriority' 'FilePriorityHigh' fid
 
             -- Get the old priority and set the new one to high.
@@ -85,7 +85,7 @@ main = do
 
     -- There is also an instance Command a => Command [a],
     -- and the return value for [a] is [Ret a].
-    
+
     Right ret <- callRTorrent "localhost" 5000 $ map cmd largeFiles
 
     putStrLn "Old priorities:"
@@ -96,7 +96,7 @@ main = do
 
 module Network.RTorrent.RPC (
       module Network.RTorrent.CommandList
-    , callRTorrent 
+    , callRTorrent
     ) where
 
 import Control.Monad.Except (ExceptT(..), throwError, runExceptT)
@@ -104,16 +104,16 @@ import Control.Exception
 import Data.Monoid
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LB
-import Network
+import Network.Socket
 import Network.XmlRpc.Internals
 
 import qualified Network.RTorrent.Command.Internals as C
 import Network.RTorrent.CommandList
-import Network.RTorrent.SCGI
+import Network.RTorrent.SCGI hiding (parseResponse)
 
 callRTorrentRaw :: HostName -> Int -> C.RTMethodCall -> ExceptT String IO Value
 callRTorrentRaw host port calls = do
-    let request = Body [] . mconcat . LB.toChunks $ renderCall call 
+    let request = Body [] . mconcat . LB.toChunks $ renderCall call
     Body _ content <- ExceptT $ query host port request
     let cs = map (toEnum . fromEnum) $ BS.unpack content
     response <- parseResponse cs
@@ -131,12 +131,11 @@ callRTorrentRaw host port calls = do
 callRTorrent :: Command a =>
     HostName
     -> Int
-    -> a 
+    -> a
     -> IO (Either String (Ret a))
-callRTorrent host port command = 
-    (runExceptT $ do
-        ret <- callRTorrentRaw host port (C.commandCall command)
-        C.commandValue command ret) 
-        `catches` [ Handler (\e -> return . Left $ show (e :: IOException))
-                  , Handler (\e -> return . Left $ show (e :: PatternMatchFail))]
-    
+callRTorrent host port command = runExceptT (do
+    ret <- callRTorrentRaw host port (C.commandCall command)
+    C.commandValue command ret)
+    `catches` [ Handler (\e -> return . Left $ show (e :: IOException))
+              , Handler (\e -> return . Left $ show (e :: PatternMatchFail))]
+
