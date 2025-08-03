@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 {-|
 Module      : Torrent
 Copyright   : (c) Kai Lindholm, 2014-2015
@@ -48,15 +49,19 @@ module Network.RTorrent.Torrent
 
 import Control.Applicative
 import Control.DeepSeq
-import Network.XmlRpc.Internals
+
+import qualified Data.Map as M
+import qualified Data.Vector as V
+import qualified Data.Text as T
 
 import Network.RTorrent.Action.Internals
 import Network.RTorrent.Command.Internals
 import Network.RTorrent.Chunk
 import Network.RTorrent.Priority
+import Network.RTorrent.Value
 
 -- | A newtype wrapper for torrent identifiers.
-newtype TorrentId = TorrentId String 
+newtype TorrentId = TorrentId T.Text
     deriving Show
 
 type TorrentAction = Action TorrentId
@@ -64,21 +69,20 @@ type TorrentAction = Action TorrentId
 instance NFData TorrentId where
     rnf (TorrentId str) = rnf str
 
-instance XmlRpcType TorrentId where
+instance RpcType TorrentId where
     toValue (TorrentId s) = ValueString s
-    fromValue v = return . TorrentId =<< fromValue v
-    getType _ = TString
+    fromValue v = TorrentId <$> fromValue v
 
 data TorrentInfo = TorrentInfo {
       torrentId :: TorrentId
-    , torrentName :: String
+    , torrentName :: T.Text
     , torrentOpen :: !Bool
     , torrentDownRate :: !Int
     , torrentUpRate :: !Int
     , torrentSize :: !Int
     , torrentBytesLeft :: !Int
-    , torrentPath :: String
-    , torrentDir :: String
+    , torrentPath :: T.Text
+    , torrentDir :: T.Text
     , torrentTorrentPriority :: !TorrentPriority
     } deriving Show
 
@@ -141,19 +145,19 @@ setTorrentPriority pr = simpleAction "d.priority.set" [PTorrentPriority pr]
 getTorrentId :: TorrentId -> TorrentAction TorrentId
 getTorrentId = simpleAction "d.hash" []
 
-getTorrentName :: TorrentId -> TorrentAction String
-getTorrentName = fmap decodeUtf8 . simpleAction "d.get_name" []
+getTorrentName :: TorrentId -> TorrentAction T.Text
+getTorrentName = simpleAction "d.get_name" []
 
 -- | Get the absolute path to the torrent's directory or file.
-getTorrentPath :: TorrentId -> TorrentAction String
-getTorrentPath = fmap decodeUtf8 . simpleAction "d.get_base_path" []
+getTorrentPath :: TorrentId -> TorrentAction T.Text
+getTorrentPath = simpleAction "d.get_base_path" []
 
 -- | Get the absolute path to the directory in which the torrent's directory or
 -- file resides.
-getTorrentDir :: TorrentId -> TorrentAction String
-getTorrentDir = fmap decodeUtf8 . simpleAction "d.get_directory" []
+getTorrentDir :: TorrentId -> TorrentAction T.Text
+getTorrentDir = simpleAction "d.get_directory" []
 
-setTorrentDir :: String -> TorrentId -> TorrentAction Int
+setTorrentDir :: T.Text -> TorrentId -> TorrentAction Int
 setTorrentDir dir = simpleAction "d.set_directory" [PString dir]
 
 getTorrentOpen :: TorrentId -> TorrentAction Bool
@@ -187,11 +191,11 @@ getTorrentSizeChunks = simpleAction "d.size_chunks" []
 
 -- | Get a list that shows which chunks of the torrent are recorded as completed.
 -- Will return 'Nothing' in the case that the torrent is closed.
-getTorrentChunks :: TorrentId -> TorrentAction (Maybe [Bool])
+getTorrentChunks :: TorrentId -> TorrentAction (Maybe (V.Vector Bool))
 getTorrentChunks = fmap combine . (getTorrentSizeChunks <+> chunks)
   where
     combine (count :*: ch) = convertChunksPad count ch
-    chunks :: TorrentId -> TorrentAction String
+    chunks :: TorrentId -> TorrentAction T.Text
     chunks = simpleAction "d.bitfield" []
     
 -- | Get the size of a chunk.
@@ -204,7 +208,7 @@ getTorrentChunkSize = simpleAction "d.chunk_size" []
 -- > allTorrents (setTorrentPriority TorrentPriorityNormal)
 -- will set the priority of all torrents to normal.
 allTorrents :: (TorrentId -> TorrentAction a) -> AllAction TorrentId a
-allTorrents = AllAction (TorrentId "") "d.multicall"
+allTorrents = AllAction (TorrentId "") "d.multicall2"
 
 -- | A command for getting torrent info for all torrents.
 getTorrents :: AllAction TorrentId TorrentInfo

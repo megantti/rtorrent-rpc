@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, RankNTypes #-}
+{-# LANGUAGE TypeFamilies, RankNTypes, OverloadedStrings #-}
 
 {-|
 Module      : Commands
@@ -59,11 +59,14 @@ module Network.RTorrent.CommandList
   )
   where
 
-import Network.XmlRpc.Internals
 
 import Control.Applicative
 
 import Data.ByteString (ByteString)
+
+import qualified Data.Map as M
+import qualified Data.Vector as V
+import qualified Data.Text as T
 
 import Network.RTorrent.Action
 import Network.RTorrent.Command.Internals
@@ -72,23 +75,24 @@ import Network.RTorrent.Peer
 import Network.RTorrent.Priority
 import Network.RTorrent.Torrent
 import Network.RTorrent.Tracker
+import Network.RTorrent.Value
 
 -- | Run a command with no arguments.
-commandSimple :: XmlRpcType a => String -> Global a
+commandSimple :: RpcType a => T.Text -> Global a
 commandSimple cmd = commandArgs cmd []
 
 -- | Run a command with the given arguments.
-commandArgs :: XmlRpcType a => String -> [Value] -> Global a
+commandArgs :: RpcType a => T.Text -> [Value] -> Global a
 commandArgs = flip $ Global parseSingle
 
 -- | Run a command with the @Int@ given as an argument.
-commandInt :: XmlRpcType a => String -> Int -> Global a
+commandInt :: RpcType a => T.Text -> Int -> Global a
 commandInt cmd i = commandArgs cmd [ValueInt i]
 
 -- | Run a command with the @String@ given as an argument.
-commandString :: XmlRpcType a => 
-    String  -- ^ Command
-    -> String -- ^ Argument
+commandString :: RpcType a => 
+    T.Text  -- ^ Command
+    -> T.Text -- ^ Argument
     -> Global a
 commandString cmd s = commandArgs cmd [ValueString s]
 
@@ -101,8 +105,8 @@ getDownRate :: Global Int
 getDownRate = commandSimple "get_down_rate"
 
 -- | Get the default download directory.
-getDirectory :: Global String
-getDirectory = fmap decodeUtf8 $ commandSimple "get_directory"
+getDirectory :: Global T.Text
+getDirectory = commandSimple "get_directory"
 
 -- | Get the maximum upload rate, in bytes per second.
 --
@@ -129,31 +133,33 @@ getPid :: Global Int
 getPid = commandSimple "system.pid"
 
 -- | Load a torrent file.
-loadTorrent :: String -- ^ A path / URL
+loadTorrent :: T.Text -- ^ A path / URL
         -> Global Int
 loadTorrent = commandString "load"
 
 -- | Load a torrent file.
 loadTorrentRaw :: ByteString -- ^ A torrent file as data
         -> Global Int
-loadTorrentRaw torrentData = commandArgs "load_raw" [ValueBase64 torrentData] 
+--loadTorrentRaw torrentData = commandArgs "load_raw" [ValueBase64 torrentData] 
+loadTorrentRaw torrentData = commandArgs "load_raw" [error "TODO"] 
 
 -- | Load a torrent file and start downloading it.
-loadStartTorrent :: String -- ^ A path / URL
+loadStartTorrent :: T.Text -- ^ A path / URL
         -> Global Int
 loadStartTorrent = commandString "load_start"
 
 -- | Load a torrent file and start downloading it.
 loadStartTorrentRaw :: ByteString -- ^ A torrent file as data
         -> Global Int
-loadStartTorrentRaw torrentData = commandArgs "load_raw_start" [ValueBase64 torrentData] 
+--loadStartTorrentRaw torrentData = commandArgs "load_raw_start" ["ValueBase64 torrentData] 
+loadStartTorrentRaw torrentData = commandArgs "load_raw_start" [error "TODO"] 
     
 
 -- | Execute a command with a result type @t@.
-data Global t = Global (forall m. (Monad m, MonadFail m) => Value -> m t) [Value] String
+data Global t = Global (forall m. (Monad m, MonadFail m) => Value -> m t) [Value] T.Text
 instance Command (Global a) where
     type Ret (Global a) = a
-    commandCall (Global _ args cmd) = mkRTMethodCall cmd args
+    commandCall (Global _ args cmd) = mkRTMethodCall cmd (V.fromList args)
     commandValue (Global parse _ _) = parse
 
 instance Functor Global where

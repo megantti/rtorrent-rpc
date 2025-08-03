@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeOperators, TypeFamilies #-}
+{-# LANGUAGE TypeOperators, TypeFamilies, OverloadedStrings #-}
 
 {-|
 Module      : Peer
@@ -13,7 +13,7 @@ For more info on actions, see "Network.RTorrent.Action".
 module Network.RTorrent.Peer (
     PeerId (..)
   , PeerInfo (..)
-  , PeerAction 
+  , PeerAction
 
   , getPeerPartial
   , allPeers
@@ -40,32 +40,33 @@ module Network.RTorrent.Peer (
 import Control.Applicative
 import Control.DeepSeq
 
+import qualified Data.Map as M
+import qualified Data.Vector as V
+import qualified Data.Text as T
+
 import Network.RTorrent.Action.Internals
 import Network.RTorrent.Torrent
 import Network.RTorrent.Command
-import Network.XmlRpc.Internals
+import Network.RTorrent.Value
 
-import Data.List.Split (splitOn)
-
-data PeerId = PeerId !TorrentId !String 
+data PeerId = PeerId !TorrentId !T.Text
     deriving Show
 
-instance XmlRpcType PeerId where
-    toValue (PeerId (TorrentId tid) i) = ValueString $ tid ++ ":p" ++ i
-    fromValue v = return . uncurry PeerId =<< parse =<< fromValue v
+instance RpcType PeerId where
+    toValue (PeerId (TorrentId tid) i) = ValueString $ tid <> ":p" <> i
+    fromValue v = uncurry PeerId <$> (parse =<< fromValue v)
       where
-        parse :: (Monad m, MonadFail m) => String -> m (TorrentId, String)
+        parse :: (Monad m, MonadFail m) => T.Text -> m (TorrentId, T.Text)
         parse str = do
-            [hash, s] <- return $ splitOn ":p" str
+            [hash, s] <- return $ T.splitOn ":p" str
             return (TorrentId hash, s)
-    getType _ = TString
 
 instance NFData PeerId where
     rnf (PeerId tid i) = rnf tid `seq` rnf i
 
 data PeerInfo = PeerInfo {
-    peerClientVersion :: String
-  , peerIp :: String
+    peerClientVersion :: T.Text
+  , peerIp :: T.Text
   , peerUpRate :: !Int
   , peerDownRate :: !Int
   , peerUpTotal :: !Int
@@ -79,7 +80,7 @@ data PeerInfo = PeerInfo {
 instance NFData PeerInfo where
     rnf (PeerInfo a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) =
               rnf a0
-        `seq` rnf a1 
+        `seq` rnf a1
         `seq` rnf a2
         `seq` rnf a3
         `seq` rnf a4
@@ -89,13 +90,13 @@ instance NFData PeerInfo where
         `seq` rnf a8
         `seq` rnf a9
 
-getPeerHash :: PeerId -> PeerAction String
+getPeerHash :: PeerId -> PeerAction T.Text
 getPeerHash = simpleAction "p.get_id" []
 
-getPeerIp :: PeerId -> PeerAction String
+getPeerIp :: PeerId -> PeerAction T.Text
 getPeerIp = simpleAction "p.get_address" []
 
-getPeerClientVersion :: PeerId -> PeerAction String
+getPeerClientVersion :: PeerId -> PeerAction T.Text
 getPeerClientVersion = simpleAction "p.get_client_version" []
 
 getPeerUpRate :: PeerId -> PeerAction Int
@@ -142,16 +143,16 @@ banPeer = simpleAction "p.banned.set" [PInt 1]
 
 type PeerAction = Action PeerId
 
-getTorrentPeers :: TorrentId -> TorrentAction [PeerInfo]
-getTorrentPeers = fmap (map contract) . allPeers getPeerPartial
+getTorrentPeers :: TorrentId -> TorrentAction (V.Vector PeerInfo)
+getTorrentPeers = fmap (V.map contract) . allPeers getPeerPartial
   where
     contract (x :*: f) = f x
 
 -- | Run the peer action on all peers that a torrent has.
-allPeers :: (PeerId -> PeerAction a) -> TorrentId -> TorrentAction [PeerId :*: a]
+allPeers :: (PeerId -> PeerAction a) -> TorrentId -> TorrentAction (V.Vector (PeerId :*: a))
 allPeers p = fmap addId . (getTorrentId <+> allToMulti (allP (getPeerHash <+> p)))
   where
-    addId (hash :*: peers) = 
-        map (\(phash :*: f) -> PeerId hash phash :*: f) peers
+    addId (hash :*: peers) =
+        V.map (\(phash :*: f) -> PeerId hash phash :*: f) peers
     allP :: (PeerId -> PeerAction a) -> AllAction PeerId a
     allP = AllAction (PeerId (TorrentId "") "") "p.multicall"

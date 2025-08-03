@@ -15,9 +15,9 @@ module Network.RTorrent.Priority (
 
 import Control.DeepSeq
 import GHC.Generics (Generic)
-import Network.XmlRpc.Internals
+import Network.RTorrent.Value
 
-data TorrentPriority = 
+data TorrentPriority =
       TorrentPriorityOff
     | TorrentPriorityLow
     | TorrentPriorityNormal
@@ -38,16 +38,15 @@ instance Enum TorrentPriority where
     fromEnum TorrentPriorityNormal = 2
     fromEnum TorrentPriorityHigh = 3
 
-instance XmlRpcType TorrentPriority where
+instance RpcType TorrentPriority where
     toValue = toValue . fromEnum
-    fromValue v = return . toEnum =<< check =<< fromValue v
+    fromValue v = toEnum <$> (check =<< fromValue v)
       where
-        check i 
+        check i
           | 0 <= i && i <= 3 = return i
           | otherwise = fail $ "Invalid TorrentPriority, got : " ++ show i
-    getType _ = TInt
 
-data FilePriority = 
+data FilePriority =
       FilePriorityOff
     | FilePriorityNormal
     | FilePriorityHigh
@@ -65,11 +64,10 @@ instance Enum FilePriority where
     fromEnum FilePriorityNormal = 1
     fromEnum FilePriorityHigh = 2
 
-instance XmlRpcType FilePriority where
+instance RpcType FilePriority where
     toValue = toValue . fromEnum
-    fromValue v = return . toEnum =<< check =<< fromValue v
+    fromValue v = toEnum <$> (check =<< fromValue v)
       where
-        check i 
+        check i
           | 0 <= i && i <= 2 = return i
           | otherwise = fail $ "Invalid FilePriority, got : " ++ show i
-    getType _ = TInt

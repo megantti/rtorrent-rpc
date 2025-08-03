@@ -1,5 +1,6 @@
 {-# LANGUAGE TypeOperators, TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE GADTs #-}
 
 {-|
@@ -34,9 +35,12 @@ import Control.Monad ((<=<), zipWithM)
 
 import qualified Codec.Binary.UTF8.String as U
 
-import Data.List.Split (splitPlaces)
+import qualified Data.Map as M
+import qualified Data.Vector as V
+import qualified Data.Text as T
 
-import Network.XmlRpc.Internals
+import Data.Vector.Split (splitPlaces)
+import Network.RTorrent.Value
 
 -- | A strict 2-tuple for easy combining of commands.
 data (:*:) a b = (:*:) !a !b
@@ -51,41 +55,43 @@ instance (Show a, Show b) => Show (a :*: b) where
 instance (Command a, Command b) => Command (a :*: b) where
     type Ret (a :*: b) = Ret a :*: Ret b
 
-    commandCall (a :*: b) = RTMethodCall $ ValueArray (val a ++ val b)
+    commandCall (a :*: b) = RTMethodCall $ ValueArray (val a V.++ val b)
         where
-          val :: Command c => c -> [Value]
+          val :: Command c => c -> V.Vector Value
           val = getArray' . runRTMethodCall . commandCall
 
     commandValue (a :*: b) (ValueArray xs) = 
           (:*:) <$> (commandValue a . ValueArray $ as)
                 <*> (commandValue b . ValueArray $ bs)
         where
-            (as, bs) = splitAt (levels a) xs
+            (as, bs) = V.splitAt (levels a) xs
     commandValue _ _ = fail "commandValue in Command (a :*: b) instance failed"
             
     levels (a :*: b) = levels a + levels b 
 
 -- Helpers for values
-getArray :: (Monad m, MonadFail m) => Value -> m [Value]
+getArray :: (Monad m, MonadFail m) => Value -> m (V.Vector Value)
 getArray (ValueArray ar) = return ar
 getArray _ = fail "getArray in Network.RTorrent.Commands failed"
 
-getArray' :: Value -> [Value]
+getArray' :: Value -> V.Vector Value
 getArray' (ValueArray ar) = ar
 getArray' _ = error "getArray' in Network.RTorrent.Commands failed"
 
 -- | Extract a value from a singleton array.
 single :: (Monad m, MonadFail m)  => Value -> m Value
-single (ValueArray [ar]) = return ar
+single (ValueArray ar) = if V.null ar 
+        then fail "Array has no values"
+        else return $ V.head ar
 single v@(ValueStruct vars) = maybe 
     err
     (\(c, s) -> do
         i <- int c
         s' <- str s
         fail $ "Server returned error " ++ show i ++ 
-                                ": " ++ s')
-    (liftA2 (,) (lookup "faultCode" vars)
-                (lookup "faultString" vars))
+                                ": " ++ T.unpack s')
+    (liftA2 (,) (M.lookup "faultCode" vars)
+                (M.lookup "faultString" vars))
   where
     int (ValueInt i) = return i
     int _ = err
@@ -95,11 +101,11 @@ single v@(ValueStruct vars) = maybe
     err = fail $ "Failed to match a singleton array, got: " ++ show v
 single v = fail $ "Failed to match a singleton array, got: " ++ show v
 
-parseValue :: (Monad m, MonadFail m, XmlRpcType a) => Value -> m a
+parseValue :: (Monad m, MonadFail m, RpcType a) => Value -> m a
 parseValue = handleError (\e -> fail $ "parseValue failed: " ++ e) . fromValue
 
 -- | Parse a value wrapped in two singleton arrays.
-parseSingle :: (Monad m, MonadFail m, XmlRpcType a) => Value -> m a
+parseSingle :: (Monad m, MonadFail m, RpcType a) => Value -> m a
 parseSingle = parseValue <=< single <=< single
 
 decodeUtf8 :: String -> String
@@ -116,12 +122,13 @@ runRTMethodCall :: RTMethodCall -> Value
 runRTMethodCall (RTMethodCall v) = v
 
 -- | Make a command that should be used when defining 'commandCall'.
-mkRTMethodCall :: String -- ^ The name of the method (i.e. get_up_rate)
-        -> [Value] -- ^ List of parameters
+mkRTMethodCall :: T.Text -- ^ The name of the method (i.e. get_up_rate)
+        -> V.Vector Value -- ^ List of parameters
         -> RTMethodCall
-mkRTMethodCall name params = RTMethodCall $ ValueArray [ValueStruct 
-                        [ ("methodName", ValueString name)
-                        , ("params", ValueArray params)]]
+mkRTMethodCall name params = RTMethodCall $ ValueArray . V.fromList $ [
+    ValueStruct . M.fromList $
+    [ ("method", ValueString name)
+    , ("params", ValueArray params)]]
 
 -- | A typeclass for commands that can be send to RTorrent.
 class Command a where
@@ -152,11 +159,25 @@ instance Command AnyCommand where
     commandValue _ = single <=< single
     levels (AnyCommand cmd) = levels cmd
 
+instance Command a => Command (V.Vector a) where
+    type Ret (V.Vector a) = V.Vector (Ret a)
+    commandCall = RTMethodCall . ValueArray 
+                . V.concatMap ( getArray'
+                            . runRTMethodCall . commandCall)
+    commandValue cmds = 
+        V.zipWithM (\cmd -> commandValue cmd . ValueArray) cmds
+        . V.fromList 
+        . splitPlaces (map levels (V.toList cmds))
+        <=< getArray 
+    levels = sum . V.map levels 
+
+
 instance Command a => Command [a] where
     type Ret [a] = [Ret a]
     commandCall = RTMethodCall . ValueArray 
-                . concatMap ( getArray'
+                . V.concatMap ( getArray'
                             . runRTMethodCall . commandCall)
+                . V.fromList
     commandValue cmds = 
         zipWithM (\cmd -> commandValue cmd . ValueArray) cmds
         . splitPlaces (map levels cmds) 

@@ -96,23 +96,39 @@ main = do
 
 module Network.RTorrent.RPC (
       module Network.RTorrent.CommandList
-    , callRTorrent 
+    , callRTorrent
     ) where
 
 import Control.Monad.Except (ExceptT(..), throwError, runExceptT)
+import Control.Monad.IO.Class
 import Control.Exception
+
 import Data.Monoid
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LB
+
+import qualified Data.Map as M
+import qualified Data.Vector as V
+import qualified Data.Text as T
+import qualified Data.Aeson as A
+
 import Network.Socket
-import Network.XmlRpc.Internals
-import qualified Network.RTorrent.Command.Internals as C
 import Network.RTorrent.CommandList
 import Network.RTorrent.SCGI
+import Network.RTorrent.Value
+import qualified Network.RTorrent.Command.Internals as C
+
 
 callRTorrentRaw :: HostName -> Int -> C.RTMethodCall -> ExceptT String IO Value
 callRTorrentRaw host port calls = do
-    let request = Body [] . mconcat . LB.toChunks $ renderCall call 
+    liftIO $ print $ A.toJSON (C.runRTMethodCall calls)
+    return (ValueArray V.empty)
+--error "not done"
+{-
+callRTorrentRaw :: HostName -> Int -> C.RTMethodCall -> ExceptT String IO Value
+callRTorrentRaw host port calls = do
+    let request = Body [] . mconcat . LB.toChunks $ renderCall call
+    print request
     Body _ content <- ExceptT $ query host port request
     let cs = map (toEnum . fromEnum) $ BS.unpack content
     response <- parseResponse cs
@@ -123,6 +139,7 @@ callRTorrentRaw host port calls = do
         Fault code err -> throwError $ show code ++ ": " ++ err
   where
     call = MethodCall "system.multicall" [C.runRTMethodCall calls]
+-}
 
 -- | Call RTorrent with a command.
 -- Only one connection is opened even when combining commands
@@ -130,12 +147,13 @@ callRTorrentRaw host port calls = do
 callRTorrent :: Command a =>
     HostName
     -> Int
-    -> a 
+    -> a
     -> IO (Either String (Ret a))
-callRTorrent host port command = 
-    (runExceptT $ do
+callRTorrent host port command = do
+    print (C.commandCall command)
+    runExceptT (do
         ret <- callRTorrentRaw host port (C.commandCall command)
-        C.commandValue command ret) 
+        C.commandValue command ret)
         `catches` [ Handler (\e -> return . Left $ show (e :: IOException))
                   , Handler (\e -> return . Left $ show (e :: PatternMatchFail))]
-    
+

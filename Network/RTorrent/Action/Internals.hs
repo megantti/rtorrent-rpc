@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeOperators, TypeFamilies, RankNTypes #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 {-|
 Module      : Action.Internals
@@ -31,15 +32,20 @@ import Control.Monad.Except (throwError)
 import Data.Monoid
 import Data.Traversable hiding (mapM)
 
-import Network.XmlRpc.Internals
+import qualified Data.Map as M
+import qualified Data.Vector as V
+import qualified Data.Text as T
+
+-- import Network.XmlRpc.Internals
 import Network.RTorrent.Command.Internals
 import Network.RTorrent.Priority
+import Network.RTorrent.Value
 
 -- | A type for actions that can act on different things like torrents and files.
 --
 -- @a@ is the return type.
 data Action i a 
-    = Action [(String, [Param])] (forall m. (Monad m, MonadFail m) => Value -> m a) i
+    = Action (V.Vector (T.Text, V.Vector Param)) (forall m. (Monad m, MonadFail m) => Value -> m a) i
 
 -- | Wrapper to get monoid and applicative instances.
 newtype ActionB i a = ActionB { runActionB :: i -> Action i a} 
@@ -49,12 +55,12 @@ newtype ActionB i a = ActionB { runActionB :: i -> Action i a}
 -- Watch out for using @Bool@ as @a@ since using it with this function will probably result in an error,
 -- since RTorrent actually returns 0 or 1 instead of a bool.
 -- One workaround is to get an @Int@ and use @Bool@'s @Enum@ instance.
-simpleAction :: XmlRpcType a => 
-       String
+simpleAction :: RpcType a => 
+       T.Text
     -> [Param] 
     -> i
     -> Action i a
-simpleAction cmd params = Action [(cmd, params)] parseSingle
+simpleAction cmd params = Action (V.singleton (cmd, V.fromList params)) parseSingle
 
 instance Functor (Action i) where
     fmap f (Action cmds p fid) = Action cmds (fmap f . p) fid
@@ -63,18 +69,18 @@ instance Functor (ActionB i) where
     fmap f = ActionB . (fmap f .) . runActionB
 
 instance Applicative (ActionB i) where
-    pure a = ActionB $ Action [] (const (pure a))  
+    pure a = ActionB $ Action V.empty (const (pure a))  
 
     (ActionB a) <*> (ActionB b) = ActionB $ \tid -> let 
         parse :: (Monad m, MonadFail m) => (Value -> m (a -> b)) -> (Value -> m a) -> Value -> m b
         parse parseA parseB arr = do
-            (valsA, valsB) <- splitAt len <$> getArray arr
+            (valsA, valsB) <- V.splitAt len <$> getArray arr
             parseA (ValueArray valsA) 
               <*> parseB (ValueArray valsB) 
         len = length cmdsA
         Action cmdsA pA _ = a tid
         Action cmdsB pB _ = b tid
-      in Action (cmdsA ++ cmdsB) (parse pA pB) tid
+      in Action (cmdsA V.++ cmdsB) (parse pA pB) tid
 
 instance Semigroup a => Semigroup (ActionB i a) where
     (<>) = liftA2 (<>) 
@@ -82,16 +88,16 @@ instance Semigroup a => Semigroup (ActionB i a) where
 instance Monoid a => Monoid (ActionB i a) where
     mempty = pure mempty
 
-instance XmlRpcType i => Command (Action i a) where
+instance RpcType i => Command (Action i a) where
     type Ret (Action i a) = a
 
     commandCall (Action cmds _ tid) = 
           RTMethodCall 
         . ValueArray
-        . concatMap (\(cmd, params) -> 
+        . V.concatMap (\(cmd, params) -> 
                         getArray'
                       . runRTMethodCall $ mkRTMethodCall cmd 
-                                    (toValue tid : map toValue params))
+                                    (V.cons (toValue tid) (V.map toValue params)))
         $ cmds
 
     commandValue (Action _ parse _) = parse
@@ -99,7 +105,7 @@ instance XmlRpcType i => Command (Action i a) where
 
 -- | Parameters for actions.
 data Param = 
-    PString String
+    PString T.Text
   | PInt Int
   | PTorrentPriority TorrentPriority
   | PFilePriority FilePriority
@@ -110,14 +116,13 @@ instance Show Param where
     show (PTorrentPriority p) = show (fromEnum p)
     show (PFilePriority p) = show (fromEnum p)
 
-instance XmlRpcType Param where
+instance RpcType Param where
     toValue (PString str) = toValue str
     toValue (PInt i) = toValue i
     toValue (PTorrentPriority p) = toValue p
     toValue (PFilePriority p) = toValue p
 
     fromValue _ = throwError "No fromValue for Params"
-    getType _ = TUnknown
 
 -- | Sequence multiple actions, for example with @f = []@.
 sequenceActions :: Traversable f => f (i -> Action i a) -> i -> Action i (f a)
@@ -125,17 +130,17 @@ sequenceActions = runActionB . traverse ActionB
 
 -- | An action that does nothing but return the value.
 pureAction :: a -> i -> Action i a
-pureAction a = Action [] (const (return a))
+pureAction a = Action V.empty (const (return a))
 
 infixr 6 <+>
 -- | Combine two actions to get a new one.
 (<+>) :: (i -> Action i a) -> (i -> Action i b) -> i -> Action i (a :*: b)
 a <+> b = runActionB $ (:*:) <$> ActionB a <*> ActionB b
 
-data AllAction i a = AllAction i String (i -> Action i a)
+data AllAction i a = AllAction i T.Text (i -> Action i a)
 
-makeMultiCall :: [(String, [Param])] -> [String]
-makeMultiCall = ("" :) 
+makeMultiCallStr :: [(String, [Param])] -> [String]
+makeMultiCallStr = ("" :) 
               . map (\(cmd, params) -> cmd ++ "=" ++ makeList params)
   where
     makeList :: Show a => [a] -> String
@@ -146,25 +151,32 @@ makeMultiCall = ("" :)
         go (x:xs) = shows x . (',' :) . go xs
         go [] = id
 
-wrapForParse :: (Monad m, MonadFail m) => Value -> m [Value]
-wrapForParse = mapM ( 
+makeMultiCall :: V.Vector (T.Text, V.Vector Param) -> V.Vector T.Text
+makeMultiCall = V.cons ""
+              . V.map (\(cmd, params) -> cmd <> "=" <> makeList params)
+  where
+    makeList :: Show a => V.Vector a -> T.Text
+    makeList = T.cons '{' . (flip T.snoc '}') . T.intercalate "," . V.toList . V.map (T.pack . show)
+
+wrapForParse :: (Monad m, MonadFail m) => Value -> m (V.Vector Value)
+wrapForParse = V.mapM ( 
                  return . ValueArray 
-                 . map (ValueArray . (:[])) 
+                 . V.map (ValueArray . V.singleton) 
                  <=< getArray) 
                <=< getArray <=< single <=< single
 
-allToMulti :: AllAction i a -> j -> Action j [a]
+allToMulti :: AllAction i a -> j -> Action j (V.Vector a)
 allToMulti (AllAction emptyId multicall action) = 
-    Action [(multicall, map PString $ makeMultiCall cmds)] 
+    Action (V.singleton (multicall, V.map PString $ makeMultiCall cmds))
            (mapM parse <=< wrapForParse)
   where 
     Action cmds parse _ = action emptyId
     
 instance Command (AllAction i a) where
-    type Ret (AllAction i a) = [a]
+    type Ret (AllAction i a) = V.Vector a
     commandCall (AllAction emptyId multicall action) = 
                       mkRTMethodCall multicall
-                    . map ValueString
+                    . V.map ValueString
                     . makeMultiCall 
                     $ cmds
       where

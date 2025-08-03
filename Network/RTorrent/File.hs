@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeOperators, TypeFamilies #-}
+{-# LANGUAGE TypeOperators, TypeFamilies, OverloadedStrings #-}
 
 {-|
 Module      : File
@@ -13,7 +13,7 @@ For more info on actions, see "Network.RTorrent.Action".
 module Network.RTorrent.File (
     FileId (..)
   , FileInfo (..)
-  , FileAction 
+  , FileAction
   , getFilePartial
   , getTorrentFiles
   , allFiles
@@ -32,29 +32,32 @@ module Network.RTorrent.File (
 import Control.Applicative
 import Control.DeepSeq
 
+import qualified Data.Map as M
+import qualified Data.Vector as V
+import qualified Data.Text as T
+
 import Network.RTorrent.Action.Internals
 import Network.RTorrent.Torrent
 import Network.RTorrent.Chunk
 import Network.RTorrent.Command.Internals
 import Network.RTorrent.Priority
-import Network.XmlRpc.Internals
+import Network.RTorrent.Value
 
-import Data.List.Split (splitOn)
+--import Data.List.Split (splitOn)
 
 data FileId = FileId !TorrentId !Int deriving Show
 
-instance XmlRpcType FileId where
-    toValue (FileId (TorrentId tid) i) = ValueString $ tid ++ ":f" ++ show i
-    fromValue v = return . uncurry FileId =<< parse =<< fromValue v
+instance RpcType FileId where
+    toValue (FileId (TorrentId tid) i) = ValueString $ tid <> ":f" <> T.pack (show i)
+    fromValue v = uncurry FileId <$> (parse =<< fromValue v)
       where
-        parse :: (Monad m, MonadFail m) => String -> m (TorrentId, Int)
+        parse :: (Monad m, MonadFail m) => T.Text -> m (TorrentId, Int)
         parse str = do
-            [hash, i] <- return $ splitOn ":f" str
-            return (TorrentId hash, read i)
-    getType _ = TString
+            [hash, i] <- return $ T.splitOn ":f" str
+            return (TorrentId hash, read (T.unpack i))
 
 data FileInfo = FileInfo {
-    filePath :: String
+    filePath :: T.Text
   , fileSizeBytes :: !Int
   , fileSizeChunks :: !Int
   , fileCompletedChunks :: !Int
@@ -67,9 +70,9 @@ instance NFData FileId where
     rnf (FileId tid i) = rnf tid `seq` rnf i
 
 instance NFData FileInfo where
-    rnf (FileInfo fid fp fsb fsc fcc fo fpt) = 
-              rnf fp 
-        `seq` rnf fsb 
+    rnf (FileInfo fid fp fsb fsc fcc fo fpt) =
+              rnf fp
+        `seq` rnf fsb
         `seq` rnf fsc
         `seq` rnf fcc
         `seq` rnf fpt
@@ -79,21 +82,21 @@ instance NFData FileInfo where
 type FileAction = Action FileId
 
 -- | Run the file action on all files that a torrent has.
-allFiles :: (FileId -> FileAction a) -> TorrentId -> TorrentAction [FileId :*: a]
+allFiles :: (FileId -> FileAction a) -> TorrentId -> TorrentAction (V.Vector (FileId :*: a))
 allFiles f = fmap addId . (getTorrentId <+> allToMulti (allF f))
   where
-    addId (hash :*: files) = 
-        zipWith (\index -> (:*:) (FileId hash index)) [0..] files 
+    addId (hash :*: files) =
+        V.imap (\index -> (:*:) (FileId hash index)) files
     allF :: (FileId -> FileAction a) -> AllAction FileId a
     allF = AllAction (FileId (TorrentId "") 0) "f.multicall"
 
 -- | Get the file name relative to the torrent base directory.
-getFilePath :: FileId -> FileAction String
-getFilePath = fmap decodeUtf8 . simpleAction "f.path" []
+getFilePath :: FileId -> FileAction T.Text
+getFilePath = simpleAction "f.path" []
 
 -- | Get the absolute path.
-getFileAbsolutePath :: FileId -> FileAction String
-getFileAbsolutePath = fmap decodeUtf8 . simpleAction "f.frozen_path" []
+getFileAbsolutePath :: FileId -> FileAction T.Text
+getFileAbsolutePath = simpleAction "f.frozen_path" []
 
 getFileSizeBytes :: FileId -> FileAction Int
 getFileSizeBytes = simpleAction "f.size_bytes" []
@@ -123,12 +126,12 @@ getFilePartial = runActionB $ FileInfo
            <*> b getFileSizeChunks
            <*> b getFileCompletedChunks
            <*> b getFilePriority
-           <*> b getFileOffset 
+           <*> b getFileOffset
   where
     b = ActionB
 
-getTorrentFiles :: TorrentId -> TorrentAction [FileInfo]
-getTorrentFiles = fmap (map contract) . allFiles getFilePartial
+getTorrentFiles :: TorrentId -> TorrentAction (V.Vector FileInfo)
+getTorrentFiles = fmap (V.map contract) . allFiles getFilePartial
   where
     contract (x :*: f) = f x
 

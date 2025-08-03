@@ -12,24 +12,28 @@ module Network.RTorrent.Chunk (
     , convertChunksPad
 ) where
 
+import qualified Data.Map as M
+import qualified Data.Vector as V
+import qualified Data.Text as T
+
 -- | Convert a string representing bits to a list of booleans
 -- and pads it to the correct length.
 convertChunksPad :: Int -- ^ Total number of chunks
-                 -> String -- ^ A bitfield represented in hexadecimals
-                 -> Maybe [Bool]
+                 -> T.Text -- ^ A bitfield represented in hexadecimals
+                 -> Maybe (V.Vector Bool)
 convertChunksPad len = fmap (pad len) . convertChunks
   where
-    pad i str 
-      | i <= 0 = []
-      | otherwise = case str of
-          []     -> replicate i False
-          (x:xs) -> x : pad (i - 1) xs
+    pad :: Int -> V.Vector Bool -> V.Vector Bool
+    pad i v = 
+        if i > V.length v 
+        then v <> V.replicate (i - V.length v) False
+        else v
 
 -- | Convert a string representing bits to a list of booleans.
-convertChunks :: String -- ^ A bitfield represented in hexadecimals
-                -> Maybe [Bool]
-convertChunks [] = Nothing
-convertChunks str = fmap concat . mapM convert $ str
+convertChunks :: T.Text -- ^ A bitfield represented in hexadecimals
+                -> Maybe (V.Vector Bool)
+convertChunks T.Empty = Nothing
+convertChunks str = fmap V.concat . mapM (fmap V.fromList . convert) $ T.unpack str
   where
     base2 = reverse . map (toEnum . (`mod` 2)) . take 4 . iterate (`div` 2)
     convert = fmap base2 . num

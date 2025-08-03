@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeOperators, TypeFamilies #-}
+{-# LANGUAGE TypeOperators, TypeFamilies, OverloadedStrings #-}
 
 {-|
 Module      : Tracker
@@ -16,7 +16,7 @@ module Network.RTorrent.Tracker (
     TrackerId (..)
   , TrackerType (..)
   , TrackerInfo (..)
-  , TrackerAction 
+  , TrackerAction
   , getTrackerPartial
   , getTorrentTrackers
   , allTrackers
@@ -33,26 +33,29 @@ import Control.Applicative
 import Control.DeepSeq
 import GHC.Generics (Generic)
 
+import qualified Data.Map as M
+import qualified Data.Vector as V
+import qualified Data.Text as T
+
 import Network.RTorrent.Action.Internals
 import Network.RTorrent.Torrent
 import Network.RTorrent.Command
-import Network.XmlRpc.Internals
+import Network.RTorrent.Value
 
-import Data.List.Split (splitOn)
+-- import Data.List.Split (splitOn)
 
 data TrackerId = TrackerId !TorrentId !Int deriving Show
 
-instance XmlRpcType TrackerId where
-    toValue (TrackerId (TorrentId tid) i) = ValueString $ tid ++ ":t" ++ show i
-    fromValue v = return . uncurry TrackerId =<< parse =<< fromValue v
+instance RpcType TrackerId where
+    toValue (TrackerId (TorrentId tid) i) = ValueString $ tid <> ":t" <> T.pack (show i)
+    fromValue v = uncurry TrackerId <$> (parse =<< fromValue v)
       where
-        parse :: (Monad m, MonadFail m) => String -> m (TorrentId, Int)
+        parse :: (Monad m, MonadFail m) => T.Text -> m (TorrentId, Int)
         parse str = do
-            [hash, i] <- return $ splitOn ":t" str
-            return (TorrentId hash, read i)
-    getType _ = TString
+            [hash, i] <- return $ T.splitOn ":t" str
+            return (TorrentId hash, read $ T.unpack i)
 
-data TrackerType = 
+data TrackerType =
       TrackerHTTP
     | TrackerUDP
     | TrackerDHT
@@ -68,19 +71,18 @@ instance Enum TrackerType where
     fromEnum TrackerUDP = 2
     fromEnum TrackerDHT = 3
 
-instance XmlRpcType TrackerType where
+instance RpcType TrackerType where
     toValue = toValue . fromEnum
-    fromValue v = return . toEnum =<< check =<< fromValue v
+    fromValue v = toEnum <$> (check =<< fromValue v)
       where
-        check i 
+        check i
           | 1 <= i && i <= 3 = return i
           | otherwise = fail $ "Invalid TrackerType, got : " ++ show i
-    getType _ = TInt
 
 instance NFData TrackerType
 
 data TrackerInfo = TrackerInfo {
-    trackerUrl :: String
+    trackerUrl :: T.Text
   , trackerType :: !TrackerType
   , trackerEnabled :: !Bool
   , trackerOpen :: !Bool
@@ -91,8 +93,8 @@ instance NFData TrackerId where
     rnf (TrackerId tid i) = rnf tid `seq` rnf i
 
 instance NFData TrackerInfo where
-    rnf (TrackerInfo a0 a1 a2 a3 a4) = 
-              rnf a0 
+    rnf (TrackerInfo a0 a1 a2 a3 a4) =
+              rnf a0
         `seq` rnf a1
         `seq` rnf a2
         `seq` rnf a3
@@ -101,15 +103,15 @@ instance NFData TrackerInfo where
 type TrackerAction = Action TrackerId
 
 -- | Run the tracker action on all trackers that a torrent has.
-allTrackers :: (TrackerId -> TrackerAction a) -> TorrentId -> TorrentAction [TrackerId :*: a]
+allTrackers :: (TrackerId -> TrackerAction a) -> TorrentId -> TorrentAction (V.Vector (TrackerId :*: a))
 allTrackers t = fmap addId . (getTorrentId <+> allToMulti (allT t))
   where
-    addId (hash :*: trackers) = 
-        zipWith (\index -> (:*:) (TrackerId hash index)) [0..] trackers 
+    addId (hash :*: trackers) =
+        V.imap (\index -> (:*:) (TrackerId hash index)) trackers
     allT :: (TrackerId -> TrackerAction a) -> AllAction TrackerId a
     allT = AllAction (TrackerId (TorrentId "") 0) "t.multicall"
 
-getTrackerUrl :: TrackerId -> TrackerAction String
+getTrackerUrl :: TrackerId -> TrackerAction T.Text
 getTrackerUrl = simpleAction "t.get_url" []
 
 getTrackerEnabled :: TrackerId -> TrackerAction Bool
@@ -134,8 +136,8 @@ getTrackerPartial = runActionB $ TrackerInfo
   where
     b = ActionB
 
-getTorrentTrackers :: TorrentId -> TorrentAction [TrackerInfo]
-getTorrentTrackers = fmap (map contract) . allTrackers getTrackerPartial
+getTorrentTrackers :: TorrentId -> TorrentAction (V.Vector TrackerInfo)
+getTorrentTrackers = fmap (V.map contract) . allTrackers getTrackerPartial
   where
     contract (x :*: f) = f x
 
