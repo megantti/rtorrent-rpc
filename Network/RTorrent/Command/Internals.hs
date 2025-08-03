@@ -28,8 +28,9 @@ module Network.RTorrent.Command.Internals (
 
 import Control.Applicative
 import Control.DeepSeq
-import Control.Monad.Except
 import Control.Monad.Identity
+
+import Control.Monad ((<=<), zipWithM)
 
 import qualified Codec.Binary.UTF8.String as U
 
@@ -65,7 +66,7 @@ instance (Command a, Command b) => Command (a :*: b) where
     levels (a :*: b) = levels a + levels b 
 
 -- Helpers for values
-getArray :: Monad m => Value -> m [Value]
+getArray :: (Monad m, MonadFail m) => Value -> m [Value]
 getArray (ValueArray ar) = return ar
 getArray _ = fail "getArray in Network.RTorrent.Commands failed"
 
@@ -74,7 +75,7 @@ getArray' (ValueArray ar) = ar
 getArray' _ = error "getArray' in Network.RTorrent.Commands failed"
 
 -- | Extract a value from a singleton array.
-single :: Monad m => Value -> m Value
+single :: (Monad m, MonadFail m)  => Value -> m Value
 single (ValueArray [ar]) = return ar
 single v@(ValueStruct vars) = maybe 
     err
@@ -90,18 +91,15 @@ single v@(ValueStruct vars) = maybe
     int _ = err
     str (ValueString s) = return s
     str _ = err
-    err :: Monad m => m a
+    err :: (Monad m, MonadFail m) => m a
     err = fail $ "Failed to match a singleton array, got: " ++ show v
 single v = fail $ "Failed to match a singleton array, got: " ++ show v
 
-parseValue :: (Monad m, XmlRpcType a) => Value -> m a
-parseValue = fromRight . runIdentity . runExceptT . fromValue 
-  where
-    fromRight (Right r) = return r
-    fromRight (Left e) = fail $ "parseValue failed: " ++ e
+parseValue :: (Monad m, MonadFail m, XmlRpcType a) => Value -> m a
+parseValue = handleError (\e -> fail $ "parseValue failed: " ++ e) . fromValue
 
 -- | Parse a value wrapped in two singleton arrays.
-parseSingle :: (Monad m, XmlRpcType a) => Value -> m a
+parseSingle :: (Monad m, MonadFail m, XmlRpcType a) => Value -> m a
 parseSingle = parseValue <=< single <=< single
 
 decodeUtf8 :: String -> String
@@ -133,7 +131,7 @@ class Command a where
     -- | Construct a request.
     commandCall :: a -> RTMethodCall 
     -- | Parse the resulting value.
-    commandValue :: (Applicative m, Monad m) => 
+    commandValue :: (Applicative m, Monad m, MonadFail m) => 
         a -> Value -> m (Ret a)
 
     levels :: a -> Int

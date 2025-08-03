@@ -18,6 +18,8 @@ import Control.Applicative
 import Data.Either (partitionEithers)
 import Data.Monoid
 
+import System.IO ( IOMode (..) )
+
 import Blaze.ByteString.Builder
 import Blaze.ByteString.Builder.Char8
 import Blaze.Text
@@ -26,7 +28,7 @@ import qualified Data.Attoparsec.ByteString.Char8 as A
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as BS
 
-import Network
+import Network.Socket
 
 type Headers = [(ByteString, ByteString)]
 
@@ -73,7 +75,13 @@ parseResponse = parseBody
 
 query :: HostName -> Int -> Body -> IO (Either String Body)
 query host port queryBody = do
-    h <- connectTo host (PortNumber (toEnum port))
+    let hints = defaultHints { addrSocketType = Stream, addrFamily = AF_INET }
+    addr <- head <$> getAddrInfo (Just hints) (Just host) (Just $ show port)
+    sock <- socket (addrFamily addr) (addrSocketType addr) (addrProtocol addr)
+
+    connect sock (addrAddress addr)
+    h <- socketToHandle sock ReadWriteMode
+
     BS.hPut h (makeRequest queryBody) 
     A.parseOnly parseResponse <$> BS.hGetContents h
 

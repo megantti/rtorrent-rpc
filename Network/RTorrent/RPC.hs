@@ -104,9 +104,8 @@ import Control.Exception
 import Data.Monoid
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LB
-import Network
+import Network.Socket
 import Network.XmlRpc.Internals
-
 import qualified Network.RTorrent.Command.Internals as C
 import Network.RTorrent.CommandList
 import Network.RTorrent.SCGI
