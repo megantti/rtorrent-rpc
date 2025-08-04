@@ -9,9 +9,13 @@ Copyright   : (c) Kai Lindholm, 2025
 License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental
+
+Data types and classes for values we use to communicate over JSON-RPC.
 -}
 
-module Network.RTorrent.Value (Value(..), RpcType(..), Err(..), handleError) where
+module Network.RTorrent.Value (
+    Value(..), Vector, KeyMap, 
+    RpcType(..), Err(..), handleError) where
 
 import Control.Monad.Except (ExceptT, MonadError(..), runExceptT)
 import Control.Monad.Trans
@@ -25,11 +29,18 @@ import qualified Data.Aeson as A
 import qualified Data.Aeson.KeyMap as AK
 import Data.Scientific
 import GHC.Generics (Generic)
---
+
+-- | ExceptT with an error message.
+type Err m a = ExceptT String m a
+handleError h m = do
+    Right x <- runExceptT (catchError m (lift . h))
+    return x
 
 type Vector = V.Vector Value
 type KeyMap = M.Map T.Text Value
 
+-- | Values we use to communicate with RTorrent.
+-- These are a subset of JSON.
 data Value = ValueArray !Vector | 
              ValueInt !Int |
              ValueString !T.Text | 
@@ -52,11 +63,7 @@ instance FromJSON Value where
     parseJSON (A.Array a) = ValueArray <$> V.mapM A.parseJSON a
     parseJSON _ = fail "Not supported type in JSON."
 
-type Err m a = ExceptT String m a
-handleError h m = do
-    Right x <- runExceptT (catchError m (lift . h))
-    return x
-
+-- | A class for converting between @Value@s and other types we use.
 class RpcType a where
     toValue :: a -> Value
     fromValue :: MonadFail m => Value -> Err m a

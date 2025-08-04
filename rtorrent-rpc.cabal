@@ -1,8 +1,8 @@
 name:                rtorrent-rpc
 version:             0.3.0.0
-synopsis:            A library for communicating with RTorrent over its XML-RPC interface.
+synopsis:            A library for communicating with RTorrent over its JSON-RPC interface.
 description:         
-    A library for communicating with RTorrent over its XML-RPC interface.
+    A library for communicating with RTorrent over its JSON-RPC interface.
 license:             MIT
 license-file:        LICENSE
 author:              Kai Lindholm

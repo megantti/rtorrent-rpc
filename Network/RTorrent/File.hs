@@ -57,13 +57,13 @@ instance RpcType FileId where
             return (TorrentId hash, read (T.unpack i))
 
 data FileInfo = FileInfo {
-    filePath :: T.Text
+    filePath :: !T.Text
   , fileSizeBytes :: !Int
   , fileSizeChunks :: !Int
   , fileCompletedChunks :: !Int
   , filePriority :: !FilePriority
   , fileOffset :: !Int
-  , fileId :: FileId
+  , fileId :: !FileId
 } deriving Show
 
 instance NFData FileId where
@@ -118,7 +118,7 @@ getFilePriority = simpleAction "f.priority" []
 setFilePriority :: FilePriority -> FileId -> FileAction Int
 setFilePriority pr = simpleAction "f.priority.set" [PFilePriority pr]
 
--- | Get a file except for @FileId@. The @FileId@ can be got by running @allFiles@.
+-- | Get @FileInfo@ for @FileId@. The @FileId@ can be got by running @allFiles@.
 getFilePartial :: FileId -> FileAction (FileId -> FileInfo)
 getFilePartial = runActionB $ FileInfo
            <$> b getFilePath

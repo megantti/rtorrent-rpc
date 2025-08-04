@@ -74,15 +74,15 @@ instance RpcType TorrentId where
     fromValue v = TorrentId <$> fromValue v
 
 data TorrentInfo = TorrentInfo {
-      torrentId :: TorrentId
-    , torrentName :: T.Text
+      torrentId :: !TorrentId
+    , torrentName :: !T.Text
     , torrentOpen :: !Bool
     , torrentDownRate :: !Int
     , torrentUpRate :: !Int
     , torrentSize :: !Int
     , torrentBytesLeft :: !Int
-    , torrentPath :: T.Text
-    , torrentDir :: T.Text
+    , torrentPath :: !T.Text
+    , torrentDir :: !T.Text
     , torrentTorrentPriority :: !TorrentPriority
     } deriving Show
 

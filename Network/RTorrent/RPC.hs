@@ -7,7 +7,7 @@ License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental
 
-This package can be used for communicating with RTorrent over its XML-RPC interface.
+This package can be used for communicating with RTorrent over its JSON-RPC interface.
 
 For example, you can request torrent info and bandwidth usage:
 
@@ -24,7 +24,8 @@ where
 >>> :t uploadRate
 Int
 
-This requires you to have set @scgi_port = localhost:5000@ in your @.rtorrent.rc@.
+This requires you to have set @network.scgi.open_port = "127.0.0.1:5000"@ in your @.rtorrent.rc@,
+but this comes with security implications if your computer has multiple users. 
 
 Note that 'Network.RTorrent.Command.:*:' is both a data constructor and a type constructor,
 and therefore:
@@ -51,9 +52,9 @@ torrentInfo :: 'TorrentId'
 torrentInfo = 'getTorrentName' 
                '<+>' 'allFiles' ('getFilePath' '<+>' 'getFileSizeBytes')
 
-    -- 'allFiles' takes a file action ('FileId' -> 'FileAction' a)
-    -- and returns a torrent action: TorrentId -> 'TorrentAction' [FileId :*: a].
-    -- Note that it automatically adds 'FileId's to all elements.
+-- 'allFiles' takes a file action ('FileId' -> 'FileAction' a)
+-- and returns a torrent action: TorrentId -> 'TorrentAction' [FileId :*: a].
+-- Note that it automatically adds 'FileId's to all elements.
 
 main :: IO ()
 main = do

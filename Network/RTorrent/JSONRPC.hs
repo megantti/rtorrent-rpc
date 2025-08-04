@@ -11,6 +11,8 @@ Copyright   : (c) Kai Lindholm, 2025
 License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental
+
+JSON-RPC message encoding and decoding.
 -}
 
 module Network.RTorrent.JSONRPC (jsonRPCcall, jsonRPCdecode) where
@@ -28,8 +30,10 @@ import Network.RTorrent.Value
 import qualified Network.RTorrent.Command.Internals as C
 import Data.Aeson.Encode.Pretty (encodePretty)
 
-jsonRPCcall :: C.RTMethodCall -> V.Vector Value
-jsonRPCcall = V.imap call . C.runRTMethodCall
+-- | Construct a JSON-RPC call. 
+-- This constructs a batch request.
+jsonRPCcall :: C.RTMethodCall -> Value
+jsonRPCcall = ValueArray . V.imap call . C.runRTMethodCall
   where
     call i (method, params) =
         ValueStruct (M.fromList [
@@ -39,6 +43,7 @@ jsonRPCcall = V.imap call . C.runRTMethodCall
         ("params", ValueArray params)
         ])
 
+-- | Decode a JSON-RPC batch response.
 jsonRPCdecode :: Value -> Either String Value
 jsonRPCdecode (ValueArray val) = do
       im <- V.sequence items

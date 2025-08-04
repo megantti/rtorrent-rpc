@@ -65,8 +65,8 @@ instance NFData PeerId where
     rnf (PeerId tid i) = rnf tid `seq` rnf i
 
 data PeerInfo = PeerInfo {
-    peerClientVersion :: T.Text
-  , peerIp :: T.Text
+    peerClientVersion :: !T.Text
+  , peerIp :: !T.Text
   , peerUpRate :: !Int
   , peerDownRate :: !Int
   , peerUpTotal :: !Int
@@ -74,7 +74,7 @@ data PeerInfo = PeerInfo {
   , peerEncrypted :: !Bool
   , peerCompletedPercent :: !Int
   , peerPort :: !Int
-  , peerId :: PeerId
+  , peerId :: !PeerId
 } deriving Show
 
 instance NFData PeerInfo where

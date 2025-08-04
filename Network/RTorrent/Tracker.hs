@@ -82,11 +82,11 @@ instance RpcType TrackerType where
 instance NFData TrackerType
 
 data TrackerInfo = TrackerInfo {
-    trackerUrl :: T.Text
+    trackerUrl :: !T.Text
   , trackerType :: !TrackerType
   , trackerEnabled :: !Bool
   , trackerOpen :: !Bool
-  , trackerId :: TrackerId
+  , trackerId :: !TrackerId
 } deriving Show
 
 instance NFData TrackerId where
@@ -126,7 +126,7 @@ getTrackerType = simpleAction "t.type" []
 getTrackerOpen :: TrackerId -> TrackerAction Bool
 getTrackerOpen = fmap toEnum . simpleAction "t.is_open" []
 
--- | Get a tracker except for @TrackerId@. The @TrackerId@ can be got by running @allTrackers@.
+-- | Get @TrackerInfo@ for @TrackerId@. The @TrackerId@ can be got by running @allTrackers@.
 getTrackerPartial :: TrackerId -> TrackerAction (TrackerId -> TrackerInfo)
 getTrackerPartial = runActionB $ TrackerInfo
            <$> b getTrackerUrl
