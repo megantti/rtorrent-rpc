@@ -80,22 +80,6 @@ single :: (Monad m, MonadFail m)  => Value -> m Value
 single (ValueArray ar) = if V.null ar 
         then fail "Array has no values"
         else return $ V.head ar
-single v@(ValueStruct vars) = maybe 
-    err
-    (\(c, s) -> do
-        i <- int c
-        s' <- str s
-        fail $ "Server returned error " ++ show i ++ 
-                                ": " ++ T.unpack s')
-    (liftA2 (,) (M.lookup "faultCode" vars)
-                (M.lookup "faultString" vars))
-  where
-    int (ValueInt i) = return i
-    int _ = err
-    str (ValueString s) = return s
-    str _ = err
-    err :: (Monad m, MonadFail m) => m a
-    err = fail $ "Failed to match a singleton array, got: " ++ show v
 single v = fail $ "Failed to match a singleton array, got: " ++ show v
 
 parseValue :: (Monad m, MonadFail m, RpcType a) => Value -> m a
