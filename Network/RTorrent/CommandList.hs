@@ -63,6 +63,8 @@ module Network.RTorrent.CommandList
 import Control.Applicative
 
 import Data.ByteString (ByteString)
+import Data.ByteString.Base64 as B64
+import Data.Text.Encoding (decodeASCIIPrefix)
 
 import qualified Data.Map as M
 import qualified Data.Vector as V
@@ -137,11 +139,15 @@ loadTorrent :: T.Text -- ^ A path / URL
         -> Global Int
 loadTorrent = commandString "load"
 
+encodeB64ByteString :: ByteString -> T.Text
+encodeB64ByteString = fst . decodeASCIIPrefix . B64.encode
+
 -- | Load a torrent file.
 loadTorrentRaw :: ByteString -- ^ A torrent file as data
         -> Global Int
 --loadTorrentRaw torrentData = commandArgs "load_raw" [ValueBase64 torrentData] 
-loadTorrentRaw torrentData = commandArgs "load.raw" [error "TODO"] 
+loadTorrentRaw torrentData = commandArgs "load.raw" 
+    [ValueString . encodeB64ByteString $ torrentData] 
 
 -- | Load a torrent file and start downloading it.
 loadStartTorrent :: T.Text -- ^ A path / URL
@@ -152,7 +158,8 @@ loadStartTorrent = commandString "load.start"
 loadStartTorrentRaw :: ByteString -- ^ A torrent file as data
         -> Global Int
 --loadStartTorrentRaw torrentData = commandArgs "load_raw_start" ["ValueBase64 torrentData] 
-loadStartTorrentRaw torrentData = commandArgs "load.raw_start" [error "TODO"] 
+loadStartTorrentRaw torrentData = commandArgs "load.raw_start" 
+    [ValueString . encodeB64ByteString $ torrentData] 
     
 
 -- | Execute a command with a result type @t@.
