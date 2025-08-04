@@ -22,7 +22,7 @@ module Network.RTorrent.Action.Internals (
     , ActionB (..)
 
     , AllAction (..)
-    , allToMulti 
+    , allToMulti
 ) where
 
 import Control.Applicative
@@ -39,29 +39,36 @@ import qualified Data.Text as T
 import Network.RTorrent.Command.Internals
 import Network.RTorrent.Priority
 import Network.RTorrent.Value
-import Debug.Trace
--- import Text.Show.Pretty (ppShow)
 
 -- | A type for actions that can act on different things like torrents and files.
 --
 -- @a@ is the return type.
-data Action i a 
-    = Action (V.Vector (T.Text, V.Vector Param)) (forall m. (Monad m, MonadFail m) => Value -> m a) i
+data Action i a = Action {
+          actionCmds :: V.Vector (T.Text, V.Vector Param)                -- ^ Commands and parameters
+        , actionParse :: forall m. (Monad m, MonadFail m) => Value -> m a -- ^ Value parser
+        , actionIndex :: i -- ^ Index at which the action is executed.
+    }
+
+--import Debug.Trace
+--import Text.Show.Pretty (ppShow)
+--debug s = traceWith ppShow . trace s
+debug s = id
+
 
 -- | Wrapper to get monoid and applicative instances.
-newtype ActionB i a = ActionB { runActionB :: i -> Action i a} 
+newtype ActionB i a = ActionB { runActionB :: i -> Action i a}
 
 -- | A simple action that can be used when constructing new ones.
 -- 
 -- Watch out for using @Bool@ as @a@ since using it with this function will probably result in an error,
 -- since RTorrent actually returns 0 or 1 instead of a bool.
 -- One workaround is to get an @Int@ and use @Bool@'s @Enum@ instance.
-simpleAction :: RpcType a => 
+simpleAction :: RpcType a =>
        T.Text
-    -> [Param] 
+    -> [Param]
     -> i
     -> Action i a
-simpleAction cmd params = Action (V.singleton (cmd, V.fromList params)) parseSingle
+simpleAction cmd params = Action (V.singleton (cmd, V.fromList params)) parseValue
 
 instance Functor (Action i) where
     fmap f (Action cmds p fid) = Action cmds (fmap f . p) fid
@@ -70,21 +77,24 @@ instance Functor (ActionB i) where
     fmap f = ActionB . (fmap f .) . runActionB
 
 instance Applicative (ActionB i) where
-    pure a = ActionB $ Action V.empty (const (pure a))  
+    pure a = ActionB $ Action V.empty (const (pure a))
 
-    (ActionB a) <*> (ActionB b) = ActionB $ \tid -> let 
+    (ActionB a) <*> (ActionB b) = ActionB $ \tid -> let
+        arrayd 1 x = V.head x
+        arrayd _ x = ValueArray x
+
         parse :: (Monad m, MonadFail m) => (Value -> m (a -> b)) -> (Value -> m a) -> Value -> m b
         parse parseA parseB arr = do
             (valsA, valsB) <- V.splitAt len <$> getArray arr
-            parseA (ValueArray valsA) 
-              <*> parseB (ValueArray valsB) 
+            parseA (arrayd (length cmdsA) valsA)
+              <*> parseB (arrayd (length cmdsB) valsB)
         len = length cmdsA
         Action cmdsA pA _ = a tid
         Action cmdsB pB _ = b tid
-      in Action (cmdsA V.++ cmdsB) (parse pA pB) tid
+      in Action (cmdsA <> cmdsB) (parse pA pB) tid
 
 instance Semigroup a => Semigroup (ActionB i a) where
-    (<>) = liftA2 (<>) 
+    (<>) = liftA2 (<>)
 
 instance Monoid a => Monoid (ActionB i a) where
     mempty = pure mempty
@@ -92,18 +102,19 @@ instance Monoid a => Monoid (ActionB i a) where
 instance RpcType i => Command (Action i a) where
     type Ret (Action i a) = a
 
-    commandCall (Action cmds _ tid) = 
-          RTMethodCall 
-        . V.concatMap (\(cmd, params) -> 
-                       runRTMethodCall $ mkRTMethodCall cmd 
-                                    (V.cons (toValue tid) (V.map toValue params)))
+    commandCall (Action cmds _ tid) =
+        RTMethodCall
+        . V.map (\(cmd, params) ->
+               (cmd, V.cons (toValue tid) (V.map toValue params)))
         $ cmds
+    commandValue (Action cmds parse _) = parse <=< deconstructArray . debug "Action command parse"
+      where
+        deconstructArray = if length cmds > 1 then return else single
 
-    commandValue (Action _ parse _) = parse
     levels (Action cmds _ _) = length cmds
 
 -- | Parameters for actions.
-data Param = 
+data Param =
     PString T.Text
   | PInt Int
   | PTorrentPriority TorrentPriority
@@ -140,14 +151,14 @@ a <+> b = runActionB $ (:*:) <$> ActionB a <*> ActionB b
 data AllAction i a = AllAction i T.Text (V.Vector Param) (i -> Action i a)
 
 makeMultiCallStr :: [(String, [Param])] -> [String]
-makeMultiCallStr = ("" :) 
+makeMultiCallStr = ("" :)
               . map (\(cmd, params) -> cmd ++ "=" ++ makeList params)
   where
     makeList :: Show a => [a] -> String
     makeList params = ('{' :) . go params $ "}"
       where
         go :: Show a => [a] -> ShowS
-        go [x] = shows x 
+        go [x] = shows x
         go (x:xs) = shows x . (',' :) . go xs
         go [] = id
 
@@ -157,35 +168,43 @@ makeMultiCall = V.map (\(cmd, params) -> cmd <> "=" <> makeList params)
     makeList :: Show a => V.Vector a -> T.Text
     makeList = T.cons '{' . (flip T.snoc '}') . T.intercalate "," . V.toList . V.map (T.pack . show)
 
-wrapForParse :: (Monad m, MonadFail m) => Value -> m (V.Vector Value)
-wrapForParse = V.mapM ( 
-                 return . ValueArray 
-                 . V.map (ValueArray . V.singleton) 
-                 <=< getArray) 
-               <=< getArray <=< single 
-
 allToMulti :: AllAction i a -> j -> Action j (V.Vector a)
-allToMulti (AllAction emptyId multicall filt action) = 
-    Action (V.singleton (multicall, 
-                (filt <>) 
-                . V.map PString $ makeMultiCall cmds))
-           (mapM parse <=< wrapForParse)
-  where 
+allToMulti (AllAction emptyId multicall filt action) j =
+    Action {
+        actionCmds = V.singleton (multicall,
+                (filt <>)
+                . V.map PString $ makeMultiCall cmds),
+        actionParse = mapM (parse . debug "AllToMulti")
+                  <=< getArray . debug "AllToMultiStart"
+                  ,
+        actionIndex = j
+    }
+  where
     Action cmds parse _ = action emptyId
-    
+
 instance Command (AllAction i a) where
     type Ret (AllAction i a) = V.Vector a
-    commandCall (AllAction emptyId multicall filt action) = 
+    commandCall (AllAction emptyId multicall filt action) =
                       mkRTMethodCall multicall
                     . (V.map toValue filt <>)
                     . V.map ValueString
-                    . makeMultiCall 
+                    . makeMultiCall
                     $ cmds
       where
         Action cmds _ _ = action emptyId
 
-    commandValue (AllAction emptyId _ filt action) = 
-        mapM parse <=< wrapForParse
+    commandValue (AllAction emptyId _ filt action) =
+        mapM (parse
+              <=< deconstructArray
+              . debug "Command parse UUG")
+            <=< getArray
+            <=< single
+            . debug "\nCommand parse start\n"-- <=< wrapForParse
       where
-        Action _ parse _ = action emptyId
+        Action cmds parse _ = action emptyId
+        deconstructArray = if length cmds > 1 then return else single
+
+
+
+
 

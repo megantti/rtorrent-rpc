@@ -112,16 +112,16 @@ allTrackers t = fmap addId . (getTorrentId <+> allToMulti (allT t))
     allT = AllAction (TrackerId (TorrentId "") 0) "t.multicall" (V.fromList [PString ""])
 
 getTrackerUrl :: TrackerId -> TrackerAction T.Text
-getTrackerUrl = simpleAction "t.get_url" []
+getTrackerUrl = simpleAction "t.url" []
 
 getTrackerEnabled :: TrackerId -> TrackerAction Bool
 getTrackerEnabled = fmap toEnum . simpleAction "t.is_enabled" []
 
 setTrackerEnabled :: Bool -> TrackerId -> TrackerAction Int
-setTrackerEnabled i = simpleAction "t.is_enabled" [PInt (fromEnum i)]
+setTrackerEnabled i = simpleAction "t.is_enabled.set" [PInt (fromEnum i)]
 
 getTrackerType :: TrackerId -> TrackerAction TrackerType
-getTrackerType = simpleAction "t.get_type" []
+getTrackerType = simpleAction "t.type" []
 
 getTrackerOpen :: TrackerId -> TrackerAction Bool
 getTrackerOpen = fmap toEnum . simpleAction "t.is_open" []

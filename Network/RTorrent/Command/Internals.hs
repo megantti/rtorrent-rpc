@@ -5,7 +5,7 @@
 
 {-|
 Module      : Command.Internals
-Copyright   : (c) Kai Lindholm, 2014, 2025
+Copyright   : (c) Kai Lindholm, 2014
 License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental
@@ -20,10 +20,10 @@ module Network.RTorrent.Command.Internals (
     , RTMethodCall (..)
     , mkRTMethodCall
     , parseSingle
+    , parseValue
     , getArray
     , getArray'
     , single
-    , decodeUtf8
 ) where
 
 import Control.Applicative
@@ -32,16 +32,12 @@ import Control.Monad.Identity
 
 import Control.Monad ((<=<), zipWithM)
 
-import qualified Codec.Binary.UTF8.String as U
-
 import qualified Data.Map as M
 import qualified Data.Vector as V
 import qualified Data.Text as T
 
 import Data.Vector.Split (splitPlaces)
 import Network.RTorrent.Value
-
-import Debug.Trace
 
 -- | A strict 2-tuple for easy combining of commands.
 data (:*:) a b = (:*:) !a !b
@@ -107,10 +103,7 @@ parseValue = handleError (\e -> fail $ "parseValue failed: " ++ e) . fromValue
 
 -- | Parse a value wrapped in a singleton array.
 parseSingle :: (Monad m, MonadFail m, RpcType a) => Value -> m a
-parseSingle = parseValue <=< single <=< single
-
-decodeUtf8 :: String -> String
-decodeUtf8 = U.decodeString
+parseSingle = parseValue <=< single
 
 -- | A newtype wrapper for method calls. 
 -- 
@@ -153,7 +146,7 @@ data AnyCommand where
 instance Command AnyCommand where
     type Ret AnyCommand = Value
     commandCall (AnyCommand cmd) = commandCall cmd
-    commandValue _ = single <=< single
+    commandValue _ = single
     levels (AnyCommand cmd) = levels cmd
 
 instance Command a => Command (V.Vector a) where
@@ -163,7 +156,7 @@ instance Command a => Command (V.Vector a) where
         V.zipWithM (\cmd -> commandValue cmd . ValueArray) cmds
         . V.fromList 
         . splitPlaces (map levels (V.toList cmds))
-        <=< getArray 
+        <=< getArray
     levels = sum . V.map levels 
 
 

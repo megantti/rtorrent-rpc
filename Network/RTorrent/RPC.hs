@@ -120,6 +120,8 @@ import Network.RTorrent.Value
 import Network.RTorrent.JSONRPC
 import qualified Network.RTorrent.Command.Internals as C
 
+import Text.Show.Pretty (ppShow)
+
 callRTorrentRaw :: HostName -> Int -> C.RTMethodCall -> ExceptT String IO Value
 callRTorrentRaw host port calls = do
     let call = jsonRPCcall calls
@@ -128,6 +130,8 @@ callRTorrentRaw host port calls = do
     Body _ content <- ExceptT $ query host port request
     response <- liftEither $ A.eitherDecodeStrict content
     --liftIO . LB.putStr $ encodePretty response
+    --liftIO $ putStrLn "\njsonRPCdecode: "
+    --liftIO . putStrLn . ppShow $ jsonRPCdecode response
     liftEither $ jsonRPCdecode response
 
 -- | Call RTorrent with a command.

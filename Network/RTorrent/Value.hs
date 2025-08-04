@@ -52,12 +52,10 @@ instance FromJSON Value where
     parseJSON (A.Array a) = ValueArray <$> V.mapM A.parseJSON a
     parseJSON _ = fail "Not supported type in JSON."
 
-
 type Err m a = ExceptT String m a
 handleError h m = do
     Right x <- runExceptT (catchError m (lift . h))
     return x
-
 
 class RpcType a where
     toValue :: a -> Value
@@ -70,10 +68,12 @@ instance RpcType Value where
 instance RpcType Int where
     toValue = ValueInt
     fromValue (ValueInt a) = return a
+    fromValue v = throwError $ "RpcType fromValue failed: not an integer: " ++ show v
 
 instance RpcType T.Text where
     toValue = ValueString
     fromValue (ValueString a) = return a
+    fromValue v = throwError $ "RpcType fromValue failed: not a string: " ++ show v
 
 instance RpcType a => RpcType (V.Vector a) where
     toValue v = ValueArray (V.map toValue v)

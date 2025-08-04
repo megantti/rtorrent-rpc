@@ -98,35 +98,35 @@ commandString cmd s = commandArgs cmd [ValueString s]
 
 -- | Get the current up rate, in bytes per second.
 getUpRate :: Global Int
-getUpRate = commandSimple "get_up_rate"
+getUpRate = commandSimple "throttle.global_up.rate"
 
 -- | Get the current down rate, in bytes per second.
 getDownRate :: Global Int
-getDownRate = commandSimple "get_down_rate"
+getDownRate = commandSimple "throttle.global_down.rate"
 
 -- | Get the default download directory.
 getDirectory :: Global T.Text
-getDirectory = commandSimple "get_directory"
+getDirectory = commandSimple "directory.default"
 
 -- | Get the maximum upload rate, in bytes per second.
 --
 -- @0@ means no limit.
 getUploadRate :: Global Int
-getUploadRate = commandSimple "get_upload_rate"
+getUploadRate = commandSimple "throttle.global_up.max_rate"
 
 -- | Get the maximum download rate, in bytes per second.
 --
 -- @0@ means no limit.
 getDownloadRate :: Global Int
-getDownloadRate = commandSimple "get_download_rate"
+getDownloadRate = commandSimple "throttle.global_down.max_rate"
 
 -- | Set the maximum upload rate, in bytes per second.
 setUploadRate :: Int -> Global Int
-setUploadRate = commandInt "set_upload_rate"
+setUploadRate = commandInt "throttle.global_up.max_rate.set"
 
 -- | Set the maximum download rate, in bytes per second.
 setDownloadRate :: Int -> Global Int
-setDownloadRate = commandInt "set_download_rate"
+setDownloadRate = commandInt "throttle.global_down.max_rate.set"
 
 -- | Get the process id.
 getPid :: Global Int
@@ -141,18 +141,18 @@ loadTorrent = commandString "load"
 loadTorrentRaw :: ByteString -- ^ A torrent file as data
         -> Global Int
 --loadTorrentRaw torrentData = commandArgs "load_raw" [ValueBase64 torrentData] 
-loadTorrentRaw torrentData = commandArgs "load_raw" [error "TODO"] 
+loadTorrentRaw torrentData = commandArgs "load.raw" [error "TODO"] 
 
 -- | Load a torrent file and start downloading it.
 loadStartTorrent :: T.Text -- ^ A path / URL
         -> Global Int
-loadStartTorrent = commandString "load_start"
+loadStartTorrent = commandString "load.start"
 
 -- | Load a torrent file and start downloading it.
 loadStartTorrentRaw :: ByteString -- ^ A torrent file as data
         -> Global Int
 --loadStartTorrentRaw torrentData = commandArgs "load_raw_start" ["ValueBase64 torrentData] 
-loadStartTorrentRaw torrentData = commandArgs "load_raw_start" [error "TODO"] 
+loadStartTorrentRaw torrentData = commandArgs "load.raw_start" [error "TODO"] 
     
 
 -- | Execute a command with a result type @t@.

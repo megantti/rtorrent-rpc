@@ -91,34 +91,34 @@ instance NFData PeerInfo where
         `seq` rnf a9
 
 getPeerHash :: PeerId -> PeerAction T.Text
-getPeerHash = simpleAction "p.get_id" []
+getPeerHash = simpleAction "p.id" []
 
 getPeerIp :: PeerId -> PeerAction T.Text
-getPeerIp = simpleAction "p.get_address" []
+getPeerIp = simpleAction "p.address" []
 
 getPeerClientVersion :: PeerId -> PeerAction T.Text
-getPeerClientVersion = simpleAction "p.get_client_version" []
+getPeerClientVersion = simpleAction "p.client_version" []
 
 getPeerUpRate :: PeerId -> PeerAction Int
-getPeerUpRate = simpleAction "p.get_up_rate" []
+getPeerUpRate = simpleAction "p.up_rate" []
 
 getPeerDownRate :: PeerId -> PeerAction Int
-getPeerDownRate = simpleAction "p.get_down_rate" []
+getPeerDownRate = simpleAction "p.down_rate" []
 
 getPeerUpTotal :: PeerId -> PeerAction Int
-getPeerUpTotal = simpleAction "p.get_up_total" []
+getPeerUpTotal = simpleAction "p.up_total" []
 
 getPeerDownTotal :: PeerId -> PeerAction Int
-getPeerDownTotal = simpleAction "p.get_down_total" []
+getPeerDownTotal = simpleAction "p.down_total" []
 
 getPeerEncrypted :: PeerId -> PeerAction Bool
 getPeerEncrypted = fmap toEnum . simpleAction "p.is_encrypted" []
 
 getPeerCompletedPercent :: PeerId -> PeerAction Int
-getPeerCompletedPercent = simpleAction "p.get_completed_percent" []
+getPeerCompletedPercent = simpleAction "p.completed_percent" []
 
 getPeerPort :: PeerId -> PeerAction Int
-getPeerPort = simpleAction "p.get_port" []
+getPeerPort = simpleAction "p.port" []
 
 -- | Get a partial peer. @PeerId@ can be gotten by running @allPeers@.
 getPeerPartial :: PeerId -> PeerAction (PeerId -> PeerInfo)

@@ -58,17 +58,11 @@ jsonRPCdecode (ValueArray val) = do
             $ M.lookup "error" a
         res <- maybe (Left "Invalid JSON-RPC response.") Right $ M.lookup "result" a
         iv <- maybe (Left "Invalid JSON-RPC response.") Right $ M.lookup "id" a
-        let res' = case res of
-                    ValueArray v -> ValueArray v
-                    a -> ValueArray (V.singleton a)
         let i = case iv of
                 ValueInt i -> Right i
                 _ -> Left "Invalid JSON-RPC response."
-        (\j -> (j, Right res')) <$> i
+        (\j -> (j, Right res)) <$> i
     decodeItem _ = Left "Invalid JSON-RPC response."
-    --items :: Either String (IM.IntMap Value)
     items :: V.Vector (Either String (Int, Either String Value))
     items = V.map decodeItem val
-
-
 jsonRPCdecode _ = Left "Invalid JSON-RPC response."
