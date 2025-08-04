@@ -126,10 +126,10 @@ import Text.Show.Pretty (ppShow)
 callRTorrentRaw :: HostName -> Int -> C.RTMethodCall -> ExceptT String IO Value
 callRTorrentRaw host port calls = do
     let call = jsonRPCcall calls
-    let request = Body [] (LB.toStrict (A.encode call))
+    let request = Body [] (A.encode call)
     --liftIO . LB.putStr $ encodePretty call
     Body _ content <- ExceptT $ query host port request
-    response <- liftEither $ A.eitherDecodeStrict content
+    response <- liftEither $ A.eitherDecode content
     --liftIO . LB.putStr $ encodePretty response
     --liftIO $ putStrLn "\njsonRPCdecode: "
     --liftIO . putStrLn . ppShow $ jsonRPCdecode response
