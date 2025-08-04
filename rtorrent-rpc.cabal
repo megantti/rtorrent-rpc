@@ -8,7 +8,7 @@ license-file:        LICENSE
 author:              Kai Lindholm
 maintainer:          megantti@gmail.com
 homepage:            https://github.com/megantti/rtorrent-rpc
-copyright:           (c) Kai Lindholm, 2014-2015
+copyright:           (c) Kai Lindholm, 2014-2015, 2025
 category:            Network
 build-type:          Simple
 -- extra-source-files:  
@@ -23,6 +23,7 @@ library
                        Network.RTorrent.Command.Internals
                        Network.RTorrent.CommandList 
                        Network.RTorrent.File
+                       Network.RTorrent.JSONRPC
                        Network.RTorrent.Peer 
                        Network.RTorrent.Priority
                        Network.RTorrent.RPC
@@ -46,7 +47,9 @@ library
                        vector,
                        containers,
                        text,
-                       vector-split
+                       vector-split,
+                       scientific,
+                       aeson-pretty
 
   -- hs-source-dirs:      
   default-language:    Haskell2010

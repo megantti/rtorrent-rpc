@@ -1,6 +1,6 @@
 {-|
 Module      : RTorrent
-Copyright   : (c) Kai Lindholm, 2014
+Copyright   : (c) Kai Lindholm, 2014, 2015
 License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental

@@ -1,8 +1,8 @@
-{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts, OverloadedStrings #-}
 
 {-|
 Module      : RPC
-Copyright   : (c) Kai Lindholm, 2014
+Copyright   : (c) Kai Lindholm, 2014, 2025
 License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental
@@ -99,7 +99,7 @@ module Network.RTorrent.RPC (
     , callRTorrent
     ) where
 
-import Control.Monad.Except (ExceptT(..), throwError, runExceptT)
+import Control.Monad.Except (ExceptT(..), throwError, runExceptT, liftEither)
 import Control.Monad.IO.Class
 import Control.Exception
 
@@ -111,35 +111,24 @@ import qualified Data.Map as M
 import qualified Data.Vector as V
 import qualified Data.Text as T
 import qualified Data.Aeson as A
+import Data.Aeson.Encode.Pretty
 
 import Network.Socket
 import Network.RTorrent.CommandList
 import Network.RTorrent.SCGI
 import Network.RTorrent.Value
+import Network.RTorrent.JSONRPC
 import qualified Network.RTorrent.Command.Internals as C
 
-
 callRTorrentRaw :: HostName -> Int -> C.RTMethodCall -> ExceptT String IO Value
 callRTorrentRaw host port calls = do
-    liftIO $ print $ A.toJSON (C.runRTMethodCall calls)
-    return (ValueArray V.empty)
---error "not done"
-{-
-callRTorrentRaw :: HostName -> Int -> C.RTMethodCall -> ExceptT String IO Value
-callRTorrentRaw host port calls = do
-    let request = Body [] . mconcat . LB.toChunks $ renderCall call
-    print request
+    let call = jsonRPCcall calls
+    let request = Body [] (LB.toStrict (A.encode call))
+    --liftIO . LB.putStr $ encodePretty call
     Body _ content <- ExceptT $ query host port request
-    let cs = map (toEnum . fromEnum) $ BS.unpack content
-    response <- parseResponse cs
-    case response of
-        Return ret -> case ret of
-            ValueArray arr -> return $ ValueArray arr
-            val -> throwError $ "Got value of type " ++ show (getType val)
-        Fault code err -> throwError $ show code ++ ": " ++ err
-  where
-    call = MethodCall "system.multicall" [C.runRTMethodCall calls]
--}
+    response <- liftEither $ A.eitherDecodeStrict content
+    --liftIO . LB.putStr $ encodePretty response
+    liftEither $ jsonRPCdecode response
 
 -- | Call RTorrent with a command.
 -- Only one connection is opened even when combining commands
@@ -150,7 +139,7 @@ callRTorrent :: Command a =>
     -> a
     -> IO (Either String (Ret a))
 callRTorrent host port command = do
-    print (C.commandCall command)
+    --print (C.commandCall command)
     runExceptT (do
         ret <- callRTorrentRaw host port (C.commandCall command)
         C.commandValue command ret)

@@ -2,7 +2,7 @@
 
 {-|
 Module      : File
-Copyright   : (c) Kai Lindholm, 2014
+Copyright   : (c) Kai Lindholm, 2014, 2025
 License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental
@@ -88,7 +88,7 @@ allFiles f = fmap addId . (getTorrentId <+> allToMulti (allF f))
     addId (hash :*: files) =
         V.imap (\index -> (:*:) (FileId hash index)) files
     allF :: (FileId -> FileAction a) -> AllAction FileId a
-    allF = AllAction (FileId (TorrentId "") 0) "f.multicall"
+    allF = AllAction (FileId (TorrentId "") 0) "f.multicall" (V.fromList [PString ""])
 
 -- | Get the file name relative to the torrent base directory.
 getFilePath :: FileId -> FileAction T.Text

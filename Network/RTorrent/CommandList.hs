@@ -2,7 +2,7 @@
 
 {-|
 Module      : Commands
-Copyright   : (c) Kai Lindholm, 2014
+Copyright   : (c) Kai Lindholm, 2014, 2025
 License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental

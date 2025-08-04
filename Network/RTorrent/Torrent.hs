@@ -146,44 +146,44 @@ getTorrentId :: TorrentId -> TorrentAction TorrentId
 getTorrentId = simpleAction "d.hash" []
 
 getTorrentName :: TorrentId -> TorrentAction T.Text
-getTorrentName = simpleAction "d.get_name" []
+getTorrentName = simpleAction "d.name" []
 
 -- | Get the absolute path to the torrent's directory or file.
 getTorrentPath :: TorrentId -> TorrentAction T.Text
-getTorrentPath = simpleAction "d.get_base_path" []
+getTorrentPath = simpleAction "d.base_path" []
 
 -- | Get the absolute path to the directory in which the torrent's directory or
 -- file resides.
 getTorrentDir :: TorrentId -> TorrentAction T.Text
-getTorrentDir = simpleAction "d.get_directory" []
+getTorrentDir = simpleAction "d.directory" []
 
 setTorrentDir :: T.Text -> TorrentId -> TorrentAction Int
-setTorrentDir dir = simpleAction "d.set_directory" [PString dir]
+setTorrentDir dir = simpleAction "d.directory.set" [PString dir]
 
 getTorrentOpen :: TorrentId -> TorrentAction Bool
 getTorrentOpen = fmap toEnum . simpleAction "d.is_open" []
 
 getTorrentUpRate :: TorrentId -> TorrentAction Int
-getTorrentUpRate = simpleAction "d.get_up_rate" []
+getTorrentUpRate = simpleAction "d.up.rate" []
 
 getTorrentDownRate :: TorrentId -> TorrentAction Int
-getTorrentDownRate = simpleAction "d.get_down_rate" []
+getTorrentDownRate = simpleAction "d.down.rate" []
 
 getTorrentSizeBytes :: TorrentId -> TorrentAction Int
-getTorrentSizeBytes = simpleAction "d.get_size_bytes" []
+getTorrentSizeBytes = simpleAction "d.size_bytes" []
 
 getTorrentLeftBytes :: TorrentId -> TorrentAction Int
-getTorrentLeftBytes = simpleAction "d.get_left_bytes" []
+getTorrentLeftBytes = simpleAction "d.left_bytes" []
 
 getTorrentPriority :: TorrentId -> TorrentAction TorrentPriority
 getTorrentPriority = simpleAction "d.priority" []
 
 -- | Get the ratio (which is multiplied by a thousand)
 getTorrentRatio :: TorrentId -> TorrentAction Int
-getTorrentRatio = simpleAction "d.get_ratio" []
+getTorrentRatio = simpleAction "d.ratio" []
 
 getTorrentFileCount :: TorrentId -> TorrentAction Int
-getTorrentFileCount = simpleAction "d.get_size_files" []
+getTorrentFileCount = simpleAction "d.size_files" []
 
 -- | A total number of chunks.
 getTorrentSizeChunks :: TorrentId -> TorrentAction Int
@@ -208,7 +208,7 @@ getTorrentChunkSize = simpleAction "d.chunk_size" []
 -- > allTorrents (setTorrentPriority TorrentPriorityNormal)
 -- will set the priority of all torrents to normal.
 allTorrents :: (TorrentId -> TorrentAction a) -> AllAction TorrentId a
-allTorrents = AllAction (TorrentId "") "d.multicall2"
+allTorrents = AllAction (TorrentId "") "d.multicall2" (V.fromList [PString "", PString ""])
 
 -- | A command for getting torrent info for all torrents.
 getTorrents :: AllAction TorrentId TorrentInfo

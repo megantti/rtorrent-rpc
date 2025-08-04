@@ -4,8 +4,8 @@
 {-# LANGUAGE DeriveGeneric #-}
 
 {-|
-Module      : Command.Internals
-Copyright   : (c) Kai Lindholm, 2014
+Module      : Value
+Copyright   : (c) Kai Lindholm, 2025
 License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental
@@ -20,9 +20,11 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Data.Map as M
 
-import Data.Aeson (ToJSON)
+import Data.Aeson (ToJSON, FromJSON)
+import qualified Data.Aeson as A
+import qualified Data.Aeson.KeyMap as AK
+import Data.Scientific
 import GHC.Generics (Generic)
---import qualified Data.Aeson as A
 --
 
 type Vector = V.Vector Value
@@ -32,12 +34,23 @@ data Value = ValueArray !Vector |
              ValueInt !Int |
              ValueString !T.Text | 
              ValueStruct !KeyMap
-             --ValueBase64 !B.ByteString
-    deriving (Show, Generic)
+    deriving (Show, Eq, Generic)
 
-instance ToJSON Value -- where
-    --toJSON (ValueArray a) = 
-    --
+instance ToJSON Value where
+    toJSON (ValueArray a) = A.Array (V.map A.toJSON a)
+    toJSON (ValueString t) = A.String t
+    toJSON (ValueInt i) = A.Number (scientific (toEnum i) 0)
+    toJSON (ValueStruct v) = A.Object (AK.fromMapText (M.map A.toJSON v))
+
+instance FromJSON Value where
+    parseJSON (A.String s) = return (ValueString s)
+    parseJSON (A.Object o) = ValueStruct <$> traverse A.parseJSON (AK.toMapText o)
+    parseJSON (A.Number n) = 
+        if isInteger n 
+        then return . ValueInt . fromEnum $ coefficient n
+        else fail "Number is not an integer."
+    parseJSON (A.Array a) = ValueArray <$> V.mapM A.parseJSON a
+    parseJSON _ = fail "Not supported type in JSON."
 
 
 type Err m a = ExceptT String m a
@@ -61,3 +74,9 @@ instance RpcType Int where
 instance RpcType T.Text where
     toValue = ValueString
     fromValue (ValueString a) = return a
+
+instance RpcType a => RpcType (V.Vector a) where
+    toValue v = ValueArray (V.map toValue v)
+    fromValue (ValueArray v) = V.mapM fromValue v
+    fromValue v = throwError $ "RpcType fromValue failed: not an array: " ++ show v
+    

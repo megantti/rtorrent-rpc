@@ -2,7 +2,7 @@
 
 {-|
 Module      : Peer
-Copyright   : (c) Kai Lindholm, 2014
+Copyright   : (c) Kai Lindholm, 2014, 2025
 License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental
@@ -155,4 +155,4 @@ allPeers p = fmap addId . (getTorrentId <+> allToMulti (allP (getPeerHash <+> p)
     addId (hash :*: peers) =
         V.map (\(phash :*: f) -> PeerId hash phash :*: f) peers
     allP :: (PeerId -> PeerAction a) -> AllAction PeerId a
-    allP = AllAction (PeerId (TorrentId "") "") "p.multicall"
+    allP = AllAction (PeerId (TorrentId "") "") "p.multicall" (V.fromList [PString ""])

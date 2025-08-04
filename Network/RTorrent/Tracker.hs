@@ -2,7 +2,7 @@
 
 {-|
 Module      : Tracker
-Copyright   : (c) Kai Lindholm, 2014
+Copyright   : (c) Kai Lindholm, 2014, 2025
 License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental
@@ -109,7 +109,7 @@ allTrackers t = fmap addId . (getTorrentId <+> allToMulti (allT t))
     addId (hash :*: trackers) =
         V.imap (\index -> (:*:) (TrackerId hash index)) trackers
     allT :: (TrackerId -> TrackerAction a) -> AllAction TrackerId a
-    allT = AllAction (TrackerId (TorrentId "") 0) "t.multicall"
+    allT = AllAction (TrackerId (TorrentId "") 0) "t.multicall" (V.fromList [PString ""])
 
 getTrackerUrl :: TrackerId -> TrackerAction T.Text
 getTrackerUrl = simpleAction "t.get_url" []

@@ -3,7 +3,7 @@
 
 {-|
 Module      : Action.Internals
-Copyright   : (c) Kai Lindholm, 2014
+Copyright   : (c) Kai Lindholm, 2014, 2025
 License     : MIT
 Maintainer  : megantti@gmail.com
 Stability   : experimental
@@ -36,10 +36,11 @@ import qualified Data.Map as M
 import qualified Data.Vector as V
 import qualified Data.Text as T
 
--- import Network.XmlRpc.Internals
 import Network.RTorrent.Command.Internals
 import Network.RTorrent.Priority
 import Network.RTorrent.Value
+import Debug.Trace
+-- import Text.Show.Pretty (ppShow)
 
 -- | A type for actions that can act on different things like torrents and files.
 --
@@ -93,10 +94,8 @@ instance RpcType i => Command (Action i a) where
 
     commandCall (Action cmds _ tid) = 
           RTMethodCall 
-        . ValueArray
         . V.concatMap (\(cmd, params) -> 
-                        getArray'
-                      . runRTMethodCall $ mkRTMethodCall cmd 
+                       runRTMethodCall $ mkRTMethodCall cmd 
                                     (V.cons (toValue tid) (V.map toValue params)))
         $ cmds
 
@@ -109,6 +108,7 @@ data Param =
   | PInt Int
   | PTorrentPriority TorrentPriority
   | PFilePriority FilePriority
+  | PFilter Value
 
 instance Show Param where
     show (PString str) = show str
@@ -137,7 +137,7 @@ infixr 6 <+>
 (<+>) :: (i -> Action i a) -> (i -> Action i b) -> i -> Action i (a :*: b)
 a <+> b = runActionB $ (:*:) <$> ActionB a <*> ActionB b
 
-data AllAction i a = AllAction i T.Text (i -> Action i a)
+data AllAction i a = AllAction i T.Text (V.Vector Param) (i -> Action i a)
 
 makeMultiCallStr :: [(String, [Param])] -> [String]
 makeMultiCallStr = ("" :) 
@@ -152,8 +152,7 @@ makeMultiCallStr = ("" :)
         go [] = id
 
 makeMultiCall :: V.Vector (T.Text, V.Vector Param) -> V.Vector T.Text
-makeMultiCall = V.cons ""
-              . V.map (\(cmd, params) -> cmd <> "=" <> makeList params)
+makeMultiCall = V.map (\(cmd, params) -> cmd <> "=" <> makeList params)
   where
     makeList :: Show a => V.Vector a -> T.Text
     makeList = T.cons '{' . (flip T.snoc '}') . T.intercalate "," . V.toList . V.map (T.pack . show)
@@ -163,26 +162,29 @@ wrapForParse = V.mapM (
                  return . ValueArray 
                  . V.map (ValueArray . V.singleton) 
                  <=< getArray) 
-               <=< getArray <=< single <=< single
+               <=< getArray <=< single 
 
 allToMulti :: AllAction i a -> j -> Action j (V.Vector a)
-allToMulti (AllAction emptyId multicall action) = 
-    Action (V.singleton (multicall, V.map PString $ makeMultiCall cmds))
+allToMulti (AllAction emptyId multicall filt action) = 
+    Action (V.singleton (multicall, 
+                (filt <>) 
+                . V.map PString $ makeMultiCall cmds))
            (mapM parse <=< wrapForParse)
   where 
     Action cmds parse _ = action emptyId
     
 instance Command (AllAction i a) where
     type Ret (AllAction i a) = V.Vector a
-    commandCall (AllAction emptyId multicall action) = 
+    commandCall (AllAction emptyId multicall filt action) = 
                       mkRTMethodCall multicall
+                    . (V.map toValue filt <>)
                     . V.map ValueString
                     . makeMultiCall 
                     $ cmds
       where
         Action cmds _ _ = action emptyId
 
-    commandValue (AllAction emptyId _ action) = 
+    commandValue (AllAction emptyId _ filt action) = 
         mapM parse <=< wrapForParse
       where
         Action _ parse _ = action emptyId
