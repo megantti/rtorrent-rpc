@@ -32,8 +32,9 @@ convertChunksPad len = fmap (pad len) . convertChunks
 -- | Convert a string representing bits to a list of booleans.
 convertChunks :: T.Text -- ^ A bitfield represented in hexadecimals
                 -> Maybe (V.Vector Bool)
-convertChunks T.Empty = Nothing
-convertChunks str = fmap V.concat . mapM (fmap V.fromList . convert) $ T.unpack str
+convertChunks str = if T.null str 
+    then Nothing
+    else fmap V.concat . mapM (fmap V.fromList . convert) $ T.unpack str
   where
     base2 = reverse . map (toEnum . (`mod` 2)) . take 4 . iterate (`div` 2)
     convert = fmap base2 . num

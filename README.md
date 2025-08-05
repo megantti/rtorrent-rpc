@@ -15,7 +15,7 @@ where
 
 ```
 >>> :t torrentInfo
-[TorrentInfo]
+Vector TorrentInfo
 >>> :t uploadRate
 Int
 ```
@@ -75,9 +75,11 @@ main = do
     V.forM_ largeFiles $ \(torrent :*: _ :*: fPath :*: _) ->
         putStrLn $ "\t" ++ T.unpack torrent ++ ": " ++ T.unpack fPath
 
-    -- There is instance ('Network.RTorrent.Command.Command' cmdA, 'Network.RTorrent.Command.Command' cmdB) => 'Network.RTorrent.Command.Command' (cmdA :*: cmdB)
-    -- The return value for the command cmdA is 'Network.RTorrent.Command.Ret' cmdA, which is an associated type
-    -- in the Command type class.
+    -- There is instance ('Network.RTorrent.Command.Command' cmdA, 
+    --                    'Network.RTorrent.Command.Command' cmdB) 
+    --       => 'Network.RTorrent.Command.Command' (cmdA :*: cmdB)
+    -- The return value for the command cmdA is 'Network.RTorrent.Command.Ret' cmdA,
+    -- which is an associated type in the Command type class.
     -- The return value for the command cmdA :*: cmdB is Ret cmdA :*: Ret cmdB.
                      
     let cmd :: Text :*: FileId :*: Text :*: Int 

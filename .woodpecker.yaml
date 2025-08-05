@@ -1,0 +1,10 @@
+matrix:
+  HASKELL_VERSION:
+    - ghc-9.6
+    - ghc-9.12
+
+steps:
+  - name: build
+    image: ${HASKELL_VERSION}
+    commands:
+      - cabal build
