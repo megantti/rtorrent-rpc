@@ -14,7 +14,7 @@ Data types and classes for values we use to communicate over JSON-RPC.
 -}
 
 module Network.RTorrent.Value (
-    Value(..), Vector, KeyMap, 
+    Value(..), ValueVector, KeyMap, 
     RpcType(..), Err(..), handleError) where
 
 import Control.Monad.Except (ExceptT, MonadError(..), runExceptT)
@@ -36,12 +36,12 @@ handleError h m = do
     Right x <- runExceptT (catchError m (lift . h))
     return x
 
-type Vector = V.Vector Value
+type ValueVector = V.Vector Value
 type KeyMap = M.Map T.Text Value
 
 -- | Values we use to communicate with RTorrent.
 -- These are a subset of JSON.
-data Value = ValueArray !Vector | 
+data Value = ValueArray !ValueVector | 
              ValueInt !Int |
              ValueString !T.Text | 
              ValueStruct !KeyMap

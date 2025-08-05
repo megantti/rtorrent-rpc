@@ -20,7 +20,7 @@ case result of
 where
 
 >>> :t torrentInfo
-[TorrentInfo]
+Vector TorrentInfo
 >>> :t uploadRate
 Int
 
@@ -45,15 +45,19 @@ sets their priorities to high.
 
 import Control.Monad
 import Network.RTorrent
+import Data.Vector (Vector)
+import qualified Data.Vector as V
+import Data.Text (Text)
+import qualified Data.Text as T
 
 -- This is an action, and they can be combined with ('<+>').
 torrentInfo :: 'TorrentId'
-                -> 'TorrentAction' (String :*: [FileId :*: String :*: Int])
+                -> 'TorrentAction' (Text :*: Vector (FileId :*: Text :*: Int))
 torrentInfo = 'getTorrentName' 
-               '<+>' 'allFiles' ('getFilePath' '<+>' 'getFileSizeBytes')
+               '<+>' 'allFiles ('getFilePath' <+> 'getFileSizeBytes')
 
 -- 'allFiles' takes a file action ('FileId' -> 'FileAction' a)
--- and returns a torrent action: TorrentId -> 'TorrentAction' [FileId :*: a].
+-- and returns a torrent action: TorrentId -> 'TorrentAction' (Vector (FileId :*: a)).
 -- Note that it automatically adds 'FileId's to all elements.
 
 main :: IO ()
@@ -61,22 +65,22 @@ main = do
     Right torrents <- callRTorrent "localhost" 5000 $
                         'allTorrents' torrentInfo
     let largeFiles = 
-                filter (\\(_ :*: _ :*: _ :*: size) -> size > 10^8)
-                . concatMap (\\(tName :*: fileList) -> 
-                                map ((:*:) tName) fileList) 
+                V.filter (\\(_ :*: _ :*: _ :*: size) -> size > 10^8)
+                . V.concatMap (\\(tName :*: fileList) -> 
+                                V.map ((:*:) tName) fileList) 
                              -- Move the torrent name into the list
                 $ torrents
 
     putStrLn "Large files:"
-    forM_ largeFiles $ \\(torrent :*: _ :*: fPath :*: _) ->
-        putStrLn $ "\\t" ++ torrent ++ ": " ++ fPath
+    V.forM_ largeFiles $ \\(torrent :*: _ :*: fPath :*: _) ->
+        putStrLn $ "\\t" ++ T.unpack torrent ++ ": " ++ T.unpack fPath
 
     -- There is instance ('Network.RTorrent.Command.Command' cmdA, 'Network.RTorrent.Command.Command' cmdB) => 'Network.RTorrent.Command.Command' (cmdA :*: cmdB)
     -- The return value for the command cmdA is 'Network.RTorrent.Command.Ret' cmdA, which is an associated type
     -- in the Command type class.
     -- The return value for the command cmdA :*: cmdB is Ret cmdA :*: Ret cmdB.
                      
-    let cmd :: String :*: FileId :*: String :*: Int 
+    let cmd :: Text :*: FileId :*: Text :*: Int 
                 -> FileAction FilePriority :*: FileAction Int
         cmd (_ :*: fid :*: _ :*: _) = 
             'getFilePriority' fid :*: 'setFilePriority' 'FilePriorityHigh' fid
@@ -84,13 +88,13 @@ main = do
             -- Get the old priority and set the new one to high.
             -- setFilePriority returns a not-so-useful Int.
 
-    -- There is also an instance Command a => Command [a],
-    -- and the return value for [a] is [Ret a].
+    -- There is also an instance Command a => Command (Vector a),
+    -- and the return value for Vector a is Vector (Ret a).
     
-    Right ret <- callRTorrent "localhost" 5000 $ map cmd largeFiles
+    Right ret <- callRTorrent "localhost" 5000 $ V.map cmd largeFiles
 
     putStrLn "Old priorities:"
-    forM_ ret $ \\(oldPriority :*: _) -> do
+    V.forM_ ret $ \\(oldPriority :*: _) -> do
         putStrLn $ "\\t" ++ show oldPriority
 @
 -}

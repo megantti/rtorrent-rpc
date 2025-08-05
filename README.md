@@ -1,7 +1,7 @@
 rtorrent-rpc
 ============
 
-This library can be used for communicating with RTorrent over its XML-RPC interface.
+This library can be used for communicating with RTorrent over its JSON-RPC interface.
 
 As an example, you can request torrent info and bandwidth usage:
 
@@ -20,7 +20,8 @@ where
 Int
 ```
 
-This requires you to have set `scgi_port = localhost:5000` in your `.rtorrent.rc`.
+This requires you to have set @network.scgi.open_port = "127.0.0.1:5000"@ in your @.rtorrent.rc@,
+but this comes with security implications if your computer has multiple users. 
 
 Note that `:*:` is both a data constructor and a type constructor,
 and therefore:
@@ -41,11 +42,17 @@ sets their priorities to high.
 {-# LANGUAGE TypeOperators #-}
 
 import Control.Monad
+
+import Data.Vector (Vector)
+import qualified Data.Vector as V
+import Data.Text (Text)
+import qualified Data.Text as T
+
 import Network.RTorrent
 
 -- This is an action, and they can be combined with (<+>).
 torrentInfo :: TorrentId
-                -> TorrentAction (String :*: [FileId :*: String :*: Int])
+                -> TorrentAction (Text :*: Vector (FileId :*: Text :*: Int))
 torrentInfo = getTorrentName 
                <+> allFiles (getFilePath <+> getFileSizeBytes)
 
@@ -58,22 +65,22 @@ main = do
     Right torrents <- callRTorrent "localhost" 5000 $
                         allTorrents torrentInfo
     let largeFiles = 
-                filter (\(_ :*: _ :*: _ :*: size) -> size > 10^8)
-                . concatMap (\(tName :*: fileList) -> 
-                                map ((:*:) tName) fileList) 
+                V.filter (\(_ :*: _ :*: _ :*: size) -> size > 10^8)
+                . V.concatMap (\(tName :*: fileList) -> 
+                                V.map ((:*:) tName) fileList) 
                              -- Move the torrent name into the list
                 $ torrents
 
     putStrLn "Large files:"
-    forM_ largeFiles $ \(torrent :*: _ :*: fPath :*: _) ->
-        putStrLn $ "\t" ++ torrent ++ ": " ++ fPath
+    V.forM_ largeFiles $ \(torrent :*: _ :*: fPath :*: _) ->
+        putStrLn $ "\t" ++ T.unpack torrent ++ ": " ++ T.unpack fPath
 
-    -- There is instance (Command cmdA, Command cmdB) => Command (cmdA :*: cmdB)
-    -- The return value for the command cmdA is Ret cmdA, which is an associated type
+    -- There is instance ('Network.RTorrent.Command.Command' cmdA, 'Network.RTorrent.Command.Command' cmdB) => 'Network.RTorrent.Command.Command' (cmdA :*: cmdB)
+    -- The return value for the command cmdA is 'Network.RTorrent.Command.Ret' cmdA, which is an associated type
     -- in the Command type class.
     -- The return value for the command cmdA :*: cmdB is Ret cmdA :*: Ret cmdB.
                      
-    let cmd :: String :*: FileId :*: String :*: Int 
+    let cmd :: Text :*: FileId :*: Text :*: Int 
                 -> FileAction FilePriority :*: FileAction Int
         cmd (_ :*: fid :*: _ :*: _) = 
             getFilePriority fid :*: setFilePriority FilePriorityHigh fid
@@ -84,9 +91,9 @@ main = do
     -- There is also an instance Command a => Command [a],
     -- and the return value for [a] is [Ret a].
     
-    Right ret <- callRTorrent "localhost" 5000 $ map cmd largeFiles
+    Right ret <- callRTorrent "localhost" 5000 $ V.map cmd largeFiles
 
     putStrLn "Old priorities:"
-    forM_ ret $ \(oldPriority :*: _) -> do
+    V.forM_ ret $ \(oldPriority :*: _) -> do
         putStrLn $ "\t" ++ show oldPriority
 ```
