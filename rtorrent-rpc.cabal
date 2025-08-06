@@ -26,31 +26,32 @@ library
                        Network.RTorrent.JSONRPC
                        Network.RTorrent.Peer 
                        Network.RTorrent.Priority
+                       Network.RTorrent.Query
                        Network.RTorrent.RPC
                        Network.RTorrent.Torrent
                        Network.RTorrent.Tracker
                        Network.RTorrent.Value
-
-  other-modules:       Network.RTorrent.SCGI
   other-extensions:    TypeFamilies, OverloadedStrings, TypeOperators, ScopedTypeVariables, 
                        GADTs, FlexibleContexts, RankNTypes
   build-depends:       attoparsec,
+                       aeson,
+                       aeson-pretty,
                        base,
-                       bytestring,
-                       deepseq,
-                       mtl,
+                       base64-bytestring,
                        blaze-builder,
                        blaze-textual,
-                       network,
-                       aeson,
-                       vector,
+                       bytestring,
                        containers,
-                       text,
-                       vector-split,
-                       scientific,
-                       aeson-pretty,
+                       deepseq,
+                       directory,
+                       mtl,
+                       network,
+                       network-uri,
                        pretty-show,
-                       base64-bytestring
+                       scientific,
+                       text,
+                       vector,
+                       vector-split
 
   -- hs-source-dirs:      
   default-language:    Haskell2010

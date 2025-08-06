@@ -6,7 +6,7 @@ This library can be used for communicating with RTorrent over its JSON-RPC inter
 As an example, you can request torrent info and bandwidth usage:
 
 ```haskell
-result <- callRTorrent "localhost" 5000 $ 
+result <- callRTorrent "tcp://localhost:5000" $ 
     getTorrents :*: getUpRate :*: getDownRate
 case result of 
   Right (torrentInfo :*: uploadRate :*: downloadRate) -> ...
@@ -20,8 +20,14 @@ Vector TorrentInfo
 Int
 ```
 
-This requires you to have set @network.scgi.open_port = "127.0.0.1:5000"@ in your @.rtorrent.rc@,
+This requires you to have set `network.scgi.open_port = "127.0.0.1:5000"` in your `.rtorrent.rc`,
 but this comes with security implications if your computer has multiple users. 
+
+Alternatively, you can setup RTorrent to open a UNIX socket with `network.scgi.open_local` , and then call
+```haskell
+result <- callRTorrent "unix://~/.rtorrent/.session/socket.rpc" $ 
+    ...
+```
 
 Note that `:*:` is both a data constructor and a type constructor,
 and therefore:
@@ -62,7 +68,7 @@ torrentInfo = getTorrentName
 
 main :: IO ()
 main = do
-    Right torrents <- callRTorrent "localhost" 5000 $
+    Right torrents <- callRTorrent "tcp://localhost:5000" $
                         allTorrents torrentInfo
     let largeFiles = 
                 V.filter (\(_ :*: _ :*: _ :*: size) -> size > 10^8)
@@ -93,7 +99,7 @@ main = do
     -- There is also an instance Command a => Command [a],
     -- and the return value for [a] is [Ret a].
     
-    Right ret <- callRTorrent "localhost" 5000 $ V.map cmd largeFiles
+    Right ret <- callRTorrent "tcp://localhost:5000" $ V.map cmd largeFiles
 
     putStrLn "Old priorities:"
     V.forM_ ret $ \(oldPriority :*: _) -> do

@@ -25,7 +25,6 @@ import qualified Data.Text as T
 import qualified Data.ByteString.Lazy as LB
 
 import Network.RTorrent.CommandList
-import Network.RTorrent.SCGI
 import Network.RTorrent.Value
 import qualified Network.RTorrent.Command.Internals as C
 import Data.Aeson.Encode.Pretty (encodePretty)

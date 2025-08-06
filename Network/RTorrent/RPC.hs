@@ -12,7 +12,7 @@ This package can be used for communicating with RTorrent over its JSON-RPC inter
 For example, you can request torrent info and bandwidth usage:
 
 @
-result <- callRTorrent "localhost" 5000 $ 
+result <- callRTorrent "tcp://localhost:5000" $ 
     'getTorrents' 'Network.RTorrent.Command.:*:' 'getUpRate' 'Network.RTorrent.Command.:*:' 'getDownRate'
 case result of 
   Right (torrentInfo :*: uploadRate :*: downloadRate) -> ...
@@ -26,6 +26,14 @@ Int
 
 This requires you to have set @network.scgi.open_port = "127.0.0.1:5000"@ in your @.rtorrent.rc@,
 but this comes with security implications if your computer has multiple users. 
+
+Alternatively, you can setup RTorrent to open a UNIX socket with @network.scgi.open_local@ , and then call
+
+@
+result <- callRTorrent "unix:\/\/~/.rtorrent\/.session\/socket.rpc" $ 
+    ...
+@
+
 
 Note that 'Network.RTorrent.Command.:*:' is both a data constructor and a type constructor,
 and therefore:
@@ -54,7 +62,7 @@ import qualified Data.Text as T
 torrentInfo :: 'TorrentId'
                 -> 'TorrentAction' (Text :*: Vector (FileId :*: Text :*: Int))
 torrentInfo = 'getTorrentName' 
-               '<+>' 'allFiles ('getFilePath' <+> 'getFileSizeBytes')
+               '<+>' 'allFiles' ('getFilePath' <+> 'getFileSizeBytes')
 
 -- 'allFiles' takes a file action ('FileId' -> 'FileAction' a)
 -- and returns a torrent action: TorrentId -> 'TorrentAction' (Vector (FileId :*: a)).
@@ -62,7 +70,7 @@ torrentInfo = 'getTorrentName'
 
 main :: IO ()
 main = do
-    Right torrents <- callRTorrent "localhost" 5000 $
+    Right torrents <- callRTorrent "tcp://localhost:5000" $
                         'allTorrents' torrentInfo
     let largeFiles = 
                 V.filter (\\(_ :*: _ :*: _ :*: size) -> size > 10^8)
@@ -91,7 +99,7 @@ main = do
     -- There is also an instance Command a => Command (Vector a),
     -- and the return value for Vector a is Vector (Ret a).
     
-    Right ret <- callRTorrent "localhost" 5000 $ V.map cmd largeFiles
+    Right ret <- callRTorrent "tcp://localhost:5000" $ V.map cmd largeFiles
 
     putStrLn "Old priorities:"
     V.forM_ ret $ \\(oldPriority :*: _) -> do
@@ -120,20 +128,19 @@ import Data.Aeson.Encode.Pretty
 
 import Network.Socket
 import Network.RTorrent.CommandList
-import Network.RTorrent.SCGI
 import Network.RTorrent.Value
 import Network.RTorrent.JSONRPC
+import Network.RTorrent.Query
 import qualified Network.RTorrent.Command.Internals as C
 
 import Text.Show.Pretty (ppShow)
 
-callRTorrentRaw :: HostName -> Int -> C.RTMethodCall -> ExceptT String IO Value
-callRTorrentRaw host port calls = do
+callRTorrentRaw :: String -> C.RTMethodCall -> ExceptT String IO Value
+callRTorrentRaw addr calls = do
     let call = jsonRPCcall calls
-    let request = Body [] (A.encode call)
     --liftIO . LB.putStr $ encodePretty call
-    Body _ content <- ExceptT $ query host port request
-    response <- liftEither $ A.eitherDecode content
+    response <- ExceptT $ query addr call
+    --response <- liftEither $ A.eitherDecode content
     --liftIO . LB.putStr $ encodePretty response
     --liftIO $ putStrLn "\njsonRPCdecode: "
     --liftIO . putStrLn . ppShow $ jsonRPCdecode response
@@ -142,15 +149,19 @@ callRTorrentRaw host port calls = do
 -- | Call RTorrent with a command.
 -- Only one connection is opened even when combining commands
 -- for example by using ':*:' or lists.
+--
+-- The address can be currently be of the forms:
+--
+--     * tcp:\/\/localhost:5000                      
+--     * unix:\/\/~\/.rtorrent\/.session\/rpc.socket    
 callRTorrent :: Command a =>
-    HostName
-    -> Int
-    -> a
+    String   -- ^ Address
+    -> a     -- ^ Command
     -> IO (Either String (Ret a))
-callRTorrent host port command = do
+callRTorrent addr command = do
     --print (C.commandCall command)
     runExceptT (do
-        ret <- callRTorrentRaw host port (C.commandCall command)
+        ret <- callRTorrentRaw addr (C.commandCall command)
         C.commandValue command ret)
         `catches` [ Handler (\e -> return . Left $ show (e :: IOException))
                   , Handler (\e -> return . Left $ show (e :: PatternMatchFail))]
