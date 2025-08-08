@@ -15,8 +15,10 @@ module Network.RTorrent.File (
   , FileInfo (..)
   , FileAction
   , getFilePartial
-  , getTorrentFiles
+  , getTorrentFileInfo
+  , getTorrentFileInfoFiltered
   , allFiles
+  , allFilesFiltered
 
   -- * Functions dealing with a single variable
   , getFilePath
@@ -81,14 +83,21 @@ instance NFData FileInfo where
 
 type FileAction = Action FileId
 
--- | Run the file action on all files that a torrent has.
-allFiles :: (FileId -> FileAction a) -> TorrentId -> TorrentAction (V.Vector (FileId :*: a))
-allFiles f = fmap addId . (getTorrentId <+> allToMulti (allF f))
+-- | Run the file action on all files that a torrent has selected by a list of regexps.
+--
+-- Note that the currently (as of 0.15.5) RTorrent regexps are very limited and only supports the wildcard @*@ matching any number of any characters.
+allFilesFiltered :: [T.Text] -> (FileId -> FileAction a) -> TorrentId -> TorrentAction (V.Vector (FileId :*: a))
+allFilesFiltered filters f = fmap addId . (getTorrentId <+> allToMulti (allF f))
   where
     addId (hash :*: files) =
         V.imap (\index -> (:*:) (FileId hash index)) files
     allF :: (FileId -> FileAction a) -> AllAction FileId a
-    allF = AllAction (FileId (TorrentId "") 0) "f.multicall" (V.fromList [PString ""])
+    allF = AllAction (FileId (TorrentId "") 0) "f.multicall" (V.singleton fs)
+    fs = if null filters then PString "" else PFilter filters
+--
+-- | Run the file action on all files that a torrent has.
+allFiles :: (FileId -> FileAction a) -> TorrentId -> TorrentAction (V.Vector (FileId :*: a))
+allFiles = allFilesFiltered []
 
 -- | Get the file name relative to the torrent base directory.
 getFilePath :: FileId -> FileAction T.Text
@@ -130,8 +139,12 @@ getFilePartial = runActionB $ FileInfo
   where
     b = ActionB
 
-getTorrentFiles :: TorrentId -> TorrentAction (V.Vector FileInfo)
-getTorrentFiles = fmap (V.map contract) . allFiles getFilePartial
+-- | Get FileInfo for all files in a torrent filtered by a list of regexps.
+getTorrentFileInfoFiltered :: [T.Text] -> TorrentId -> TorrentAction (V.Vector FileInfo)
+getTorrentFileInfoFiltered filters = fmap (V.map contract) . allFilesFiltered filters getFilePartial
   where
     contract (x :*: f) = f x
 
+-- | Get FileInfo for all files in a torrent.
+getTorrentFileInfo :: TorrentId -> TorrentAction (V.Vector FileInfo)
+getTorrentFileInfo = getTorrentFileInfoFiltered []

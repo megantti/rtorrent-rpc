@@ -184,9 +184,11 @@ allToMulti (AllAction emptyId multicall filt action) j =
         actionCmds = V.singleton (multicall,
                 (filt <>)
                 . V.map PString $ makeMultiCall cmds),
-        actionParse = mapM parse
-                  <=< getArray
-                  ,
+        actionParse = let 
+            deconstructArray = if length cmds > 1 then return else single
+            in mapM (parse <=< deconstructArray)
+                <=< getArray
+        ,
         actionIndex = j
     }
   where
