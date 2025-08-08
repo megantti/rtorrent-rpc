@@ -30,7 +30,6 @@ module Network.RTorrent.Tracker (
 ) where
 
 import Control.Applicative
-import Control.DeepSeq
 import GHC.Generics (Generic)
 
 import qualified Data.Map as M
@@ -79,8 +78,6 @@ instance RpcType TrackerType where
           | 1 <= i && i <= 3 = return i
           | otherwise = fail $ "Invalid TrackerType, got : " ++ show i
 
-instance NFData TrackerType
-
 data TrackerInfo = TrackerInfo {
     trackerUrl :: !T.Text
   , trackerType :: !TrackerType
@@ -88,17 +85,6 @@ data TrackerInfo = TrackerInfo {
   , trackerOpen :: !Bool
   , trackerId :: !TrackerId
 } deriving Show
-
-instance NFData TrackerId where
-    rnf (TrackerId tid i) = rnf tid `seq` rnf i
-
-instance NFData TrackerInfo where
-    rnf (TrackerInfo a0 a1 a2 a3 a4) =
-              rnf a0
-        `seq` rnf a1
-        `seq` rnf a2
-        `seq` rnf a3
-        `seq` rnf a4
 
 type TrackerAction = Action TrackerId
 

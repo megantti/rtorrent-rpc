@@ -42,7 +42,6 @@ library
                        blaze-textual,
                        bytestring,
                        containers,
-                       deepseq,
                        directory,
                        mtl,
                        network,

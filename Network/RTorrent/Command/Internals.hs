@@ -27,7 +27,6 @@ module Network.RTorrent.Command.Internals (
 ) where
 
 import Control.Applicative
-import Control.DeepSeq
 import Control.Monad.Identity
 
 import Control.Monad ((<=<), zipWithM)
@@ -42,9 +41,6 @@ import Network.RTorrent.Value
 -- | A strict 2-tuple for easy combining of commands.
 data (:*:) a b = (:*:) !a !b
 infixr 6 :*:
-
-instance (NFData a, NFData b) => NFData (a :*: b) where
-    rnf (a :*: b) = rnf a `seq` rnf b
 
 instance (Show a, Show b) => Show (a :*: b) where
     show (a :*: b) = show a ++ " :*: " ++ show b

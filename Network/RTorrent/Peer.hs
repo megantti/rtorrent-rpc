@@ -38,7 +38,6 @@ module Network.RTorrent.Peer (
 ) where
 
 import Control.Applicative
-import Control.DeepSeq
 
 import qualified Data.Map as M
 import qualified Data.Vector as V
@@ -61,9 +60,6 @@ instance RpcType PeerId where
             [hash, s] <- return $ T.splitOn ":p" str
             return (TorrentId hash, s)
 
-instance NFData PeerId where
-    rnf (PeerId tid i) = rnf tid `seq` rnf i
-
 data PeerInfo = PeerInfo {
     peerClientVersion :: !T.Text
   , peerIp :: !T.Text
@@ -76,19 +72,6 @@ data PeerInfo = PeerInfo {
   , peerPort :: !Int
   , peerId :: !PeerId
 } deriving Show
-
-instance NFData PeerInfo where
-    rnf (PeerInfo a0 a1 a2 a3 a4 a5 a6 a7 a8 a9) =
-              rnf a0
-        `seq` rnf a1
-        `seq` rnf a2
-        `seq` rnf a3
-        `seq` rnf a4
-        `seq` rnf a5
-        `seq` rnf a6
-        `seq` rnf a7
-        `seq` rnf a8
-        `seq` rnf a9
 
 getPeerHash :: PeerId -> PeerAction T.Text
 getPeerHash = simpleAction "p.id" []

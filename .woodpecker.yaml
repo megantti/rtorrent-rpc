@@ -1,5 +1,6 @@
 matrix:
   HASKELL_VERSION:
+    - ghc-9.2
     - ghc-9.6
     - ghc-9.12
 

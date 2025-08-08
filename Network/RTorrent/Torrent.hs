@@ -48,7 +48,6 @@ module Network.RTorrent.Torrent
   where
 
 import Control.Applicative
-import Control.DeepSeq
 
 import qualified Data.Map as M
 import qualified Data.Vector as V
@@ -66,9 +65,6 @@ newtype TorrentId = TorrentId T.Text
 
 type TorrentAction = Action TorrentId
 
-instance NFData TorrentId where
-    rnf (TorrentId str) = rnf str
-
 instance RpcType TorrentId where
     toValue (TorrentId s) = ValueString s
     fromValue v = TorrentId <$> fromValue v
@@ -85,19 +81,6 @@ data TorrentInfo = TorrentInfo {
     , torrentDir :: !T.Text
     , torrentTorrentPriority :: !TorrentPriority
     } deriving Show
-
-instance NFData TorrentInfo where
-    rnf (TorrentInfo i a0 a1 a2 a3 a4 a5 a6 a7 a8) = 
-        rnf i  `seq`
-        rnf a0 `seq`
-        rnf a1 `seq`
-        rnf a2 `seq`
-        rnf a3 `seq`
-        rnf a4 `seq`
-        rnf a5 `seq`
-        rnf a6 `seq`
-        rnf a7 `seq`
-        rnf a8
 
 -- | Get a TorrentInfo for a torrent.
 getTorrent :: TorrentId -> TorrentAction TorrentInfo

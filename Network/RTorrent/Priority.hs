@@ -13,7 +13,6 @@ module Network.RTorrent.Priority (
   , FilePriority (..)
 ) where
 
-import Control.DeepSeq
 import GHC.Generics (Generic)
 import Network.RTorrent.Value
 
@@ -23,8 +22,6 @@ data TorrentPriority =
     | TorrentPriorityNormal
     | TorrentPriorityHigh
   deriving (Show, Eq, Ord, Generic)
-
-instance NFData TorrentPriority
 
 instance Enum TorrentPriority where
     toEnum 0 = TorrentPriorityOff
@@ -51,8 +48,6 @@ data FilePriority =
     | FilePriorityNormal
     | FilePriorityHigh
   deriving (Show, Eq, Ord, Generic)
-
-instance NFData FilePriority
 
 instance Enum FilePriority where
     toEnum 0 = FilePriorityOff

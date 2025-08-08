@@ -32,7 +32,6 @@ module Network.RTorrent.File (
 ) where
 
 import Control.Applicative
-import Control.DeepSeq
 
 import qualified Data.Map as M
 import qualified Data.Vector as V
@@ -67,19 +66,6 @@ data FileInfo = FileInfo {
   , fileOffset :: !Int
   , fileId :: !FileId
 } deriving Show
-
-instance NFData FileId where
-    rnf (FileId tid i) = rnf tid `seq` rnf i
-
-instance NFData FileInfo where
-    rnf (FileInfo fid fp fsb fsc fcc fo fpt) =
-              rnf fp
-        `seq` rnf fsb
-        `seq` rnf fsc
-        `seq` rnf fcc
-        `seq` rnf fpt
-        `seq` rnf fo
-        `seq` rnf fid
 
 type FileAction = Action FileId
 
