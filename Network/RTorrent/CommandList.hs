@@ -64,7 +64,7 @@ import Control.Applicative
 
 import Data.ByteString (ByteString)
 import Data.ByteString.Base64 as B64
-import Data.Text.Encoding (decodeASCIIPrefix)
+import Data.Text.Encoding (decodeLatin1)
 
 import qualified Data.Map as M
 import qualified Data.Vector as V
@@ -140,7 +140,7 @@ loadTorrent :: T.Text -- ^ A path / URL
 loadTorrent = commandString "load"
 
 encodeB64ByteString :: ByteString -> T.Text
-encodeB64ByteString = fst . decodeASCIIPrefix . B64.encode
+encodeB64ByteString = decodeLatin1 . B64.encode
 
 -- | Load a torrent file.
 loadTorrentRaw :: ByteString -- ^ A torrent file as data
