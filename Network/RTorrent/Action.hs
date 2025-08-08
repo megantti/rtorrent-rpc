@@ -20,14 +20,14 @@ on a group of objects.
 For example, 
 
 @
-callRTorrent "localhost" 5000 $ some_action (some_id :: SomeId)
+callRTorrent "tcp://localhost:5000" $ some_action (some_id :: SomeId)
 @
 is a valid thing to write when @some@ is one of the previous objects.
 
 To call an action on all torrents, you can use 'Network.RTorrent.Torrent.allTorrents', so that
 
 @
-callRTorrent "localhost" 5000 $ allTorrents getTorrentId
+callRTorrent "tcp://localhost:5000" $ allTorrents getTorrentId
 @
 will return a list of torrent ids.
 
@@ -37,14 +37,14 @@ which will act on all peers, files, or trackers that are associated to a torrent
 They will also return ids for each object.
 Then for example 
 
-> allFiles getFileSizeBytes :: TorrentId -> TorrentAction [FileId :*: Int]
+> allFiles getFileSizeBytes :: TorrentId -> TorrentAction (Vector (FileId :*: Int))
 is an action that will return a list of ids and file sizes when run on a torrent.
 These can further be used with 'Network.RTorrent.Torrent.allTorrents'.
 
 To combine actions, you can use '<+>' and 'sequenceActions'
-which correspond to ':*:' and @[]@ for commands.
+which correspond to ':*:' and @[]@ or @Vector@ for commands.
 
-In order to write new actions, 'simpleAction' can be used.
+'simpleAction' can be used to write new actions.
 
 -}
 

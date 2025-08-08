@@ -112,7 +112,7 @@ getPeerDownTotal :: PeerId -> PeerAction Int
 getPeerDownTotal = simpleAction "p.down_total" []
 
 getPeerEncrypted :: PeerId -> PeerAction Bool
-getPeerEncrypted = fmap toEnum . simpleAction "p.is_encrypted" []
+getPeerEncrypted = simpleAction "p.is_encrypted" []
 
 getPeerCompletedPercent :: PeerId -> PeerAction Int
 getPeerCompletedPercent = simpleAction "p.completed_percent" []

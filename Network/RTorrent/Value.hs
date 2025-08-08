@@ -77,6 +77,14 @@ instance RpcType Int where
     fromValue (ValueInt a) = return a
     fromValue v = throwError $ "RpcType fromValue failed: not an integer: " ++ show v
 
+instance RpcType Bool where
+    toValue v = ValueInt (if v then 1 else 0)
+    fromValue (ValueInt a) 
+        | a == 0    = return False
+        | a == 1    = return True
+        | otherwise = throwError $ "RpcType fromValue failed: not a boolean: " ++ show a
+    fromValue v = throwError $ "RpcType fromValue failed: not an integer: " ++ show v
+
 instance RpcType T.Text where
     toValue = ValueString
     fromValue (ValueString a) = return a

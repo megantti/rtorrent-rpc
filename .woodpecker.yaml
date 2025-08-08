@@ -8,3 +8,5 @@ steps:
     image: ${HASKELL_VERSION}
     commands:
       - cabal build
+      - cabal freeze
+      - cat cabal.project.freeze

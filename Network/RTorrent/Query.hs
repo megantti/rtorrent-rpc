@@ -116,6 +116,7 @@ scgi addr call = do
         Left err -> Left err
         Right (Body _ content) -> A.eitherDecode content
 
+-- | Send a query in @Value@ to the address and return the response or an error.
 query :: String -> Value -> IO (Either String Value)
 query addr call =
     case parseURIReference addr of

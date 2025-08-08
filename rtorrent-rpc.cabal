@@ -47,7 +47,6 @@ library
                        mtl,
                        network,
                        network-uri,
-                       pretty-show,
                        scientific,
                        text,
                        vector,

@@ -49,20 +49,25 @@ data Action i a = Action {
         , actionIndex :: i -- ^ Index at which the action is executed.
     }
 
---import Debug.Trace
---import Text.Show.Pretty (ppShow)
---debug s = traceWith ppShow . trace s
-debug s = id
-
-
 -- | Wrapper to get monoid and applicative instances.
 newtype ActionB i a = ActionB { runActionB :: i -> Action i a}
 
 -- | A simple action that can be used when constructing new ones.
--- 
--- Watch out for using @Bool@ as @a@ since using it with this function will probably result in an error,
--- since RTorrent actually returns 0 or 1 instead of a bool.
--- One workaround is to get an @Int@ and use @Bool@'s @Enum@ instance.
+-- For example, 
+--
+-- @
+-- getTorrentDir :: TorrentId -> TorrentAction Text
+-- getTorrentDir = simpleAction "d.directory" []
+--
+-- setTorrentDir :: Text -> TorrentId -> TorrentAction Int
+-- setTorrentDir dir = simpleAction "d.directory.set" [PString dir]
+-- @
+--
+-- A list of commands can be found in 
+--
+-- <https://github.com/rakshasa/rtorrent/wiki/rTorrent-0.9-Comprehensive-Command-list-%28WIP%29>
+--
+-- but to get a proper explanation for the commands a dive into source code for RTorrent is possibly needed.
 simpleAction :: RpcType a =>
        T.Text
     -> [Param]
@@ -107,7 +112,7 @@ instance RpcType i => Command (Action i a) where
         . V.map (\(cmd, params) ->
                (cmd, V.cons (toValue tid) (V.map toValue params)))
         $ cmds
-    commandValue (Action cmds parse _) = parse <=< deconstructArray . debug "Action command parse"
+    commandValue (Action cmds parse _) = parse <=< deconstructArray
       where
         deconstructArray = if length cmds > 1 then return else single
 
@@ -117,25 +122,30 @@ instance RpcType i => Command (Action i a) where
 data Param =
     PString T.Text
   | PInt Int
+  | PBool Bool
   | PTorrentPriority TorrentPriority
   | PFilePriority FilePriority
-  | PFilter Value
+  | PFilter [T.Text]
 
 instance Show Param where
     show (PString str) = show str
     show (PInt i) = show i
+    show (PBool b) = show b
     show (PTorrentPriority p) = show (fromEnum p)
     show (PFilePriority p) = show (fromEnum p)
+    show (PFilter f) = show f
 
 instance RpcType Param where
     toValue (PString str) = toValue str
+    toValue (PBool b) = toValue b
     toValue (PInt i) = toValue i
     toValue (PTorrentPriority p) = toValue p
     toValue (PFilePriority p) = toValue p
+    toValue (PFilter p) = ValueArray . V.fromList . map ValueString $ p
 
     fromValue _ = throwError "No fromValue for Params"
 
--- | Sequence multiple actions, for example with @f = []@.
+-- | Sequence multiple actions, for example with @f = []@ or @f = Vector@.
 sequenceActions :: Traversable f => f (i -> Action i a) -> i -> Action i (f a)
 sequenceActions = runActionB . traverse ActionB
 
@@ -166,7 +176,7 @@ makeMultiCall :: V.Vector (T.Text, V.Vector Param) -> V.Vector T.Text
 makeMultiCall = V.map (\(cmd, params) -> cmd <> "=" <> makeList params)
   where
     makeList :: Show a => V.Vector a -> T.Text
-    makeList = T.cons '{' . (flip T.snoc '}') . T.intercalate "," . V.toList . V.map (T.pack . show)
+    makeList = T.cons '{' . flip T.snoc '}' . T.intercalate "," . V.toList . V.map (T.pack . show)
 
 allToMulti :: AllAction i a -> j -> Action j (V.Vector a)
 allToMulti (AllAction emptyId multicall filt action) j =
@@ -174,8 +184,8 @@ allToMulti (AllAction emptyId multicall filt action) j =
         actionCmds = V.singleton (multicall,
                 (filt <>)
                 . V.map PString $ makeMultiCall cmds),
-        actionParse = mapM (parse . debug "AllToMulti")
-                  <=< getArray . debug "AllToMultiStart"
+        actionParse = mapM parse
+                  <=< getArray
                   ,
         actionIndex = j
     }
@@ -195,16 +205,9 @@ instance Command (AllAction i a) where
 
     commandValue (AllAction emptyId _ filt action) =
         mapM (parse
-              <=< deconstructArray
-              . debug "Command parse UUG")
+              <=< deconstructArray)
             <=< getArray
             <=< single
-            . debug "\nCommand parse start\n"-- <=< wrapForParse
       where
         Action cmds parse _ = action emptyId
         deconstructArray = if length cmds > 1 then return else single
-
-
-
-
-

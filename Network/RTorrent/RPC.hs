@@ -133,7 +133,7 @@ import Network.RTorrent.JSONRPC
 import Network.RTorrent.Query
 import qualified Network.RTorrent.Command.Internals as C
 
-import Text.Show.Pretty (ppShow)
+-- import Text.Show.Pretty (ppShow)
 
 callRTorrentRaw :: String -> C.RTMethodCall -> ExceptT String IO Value
 callRTorrentRaw addr calls = do

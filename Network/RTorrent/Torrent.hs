@@ -161,7 +161,7 @@ setTorrentDir :: T.Text -> TorrentId -> TorrentAction Int
 setTorrentDir dir = simpleAction "d.directory.set" [PString dir]
 
 getTorrentOpen :: TorrentId -> TorrentAction Bool
-getTorrentOpen = fmap toEnum . simpleAction "d.is_open" []
+getTorrentOpen = simpleAction "d.is_open" []
 
 getTorrentUpRate :: TorrentId -> TorrentAction Int
 getTorrentUpRate = simpleAction "d.up.rate" []
