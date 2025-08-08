@@ -6,14 +6,11 @@ Maintainer  : megantti@gmail.com
 Stability   : experimental
 -}
 
-{-# LANGUAGE DeriveGeneric #-}
-
 module Network.RTorrent.Priority (
     TorrentPriority (..)
   , FilePriority (..)
 ) where
 
-import GHC.Generics (Generic)
 import Network.RTorrent.Value
 
 data TorrentPriority =
@@ -21,7 +18,7 @@ data TorrentPriority =
     | TorrentPriorityLow
     | TorrentPriorityNormal
     | TorrentPriorityHigh
-  deriving (Show, Eq, Ord, Generic)
+  deriving (Show, Eq, Ord)
 
 instance Enum TorrentPriority where
     toEnum 0 = TorrentPriorityOff
@@ -47,7 +44,7 @@ data FilePriority =
       FilePriorityOff
     | FilePriorityNormal
     | FilePriorityHigh
-  deriving (Show, Eq, Ord, Generic)
+  deriving (Show, Eq, Ord)
 
 instance Enum FilePriority where
     toEnum 0 = FilePriorityOff

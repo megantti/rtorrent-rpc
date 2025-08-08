@@ -10,8 +10,6 @@ Stability   : experimental
 For more info on actions, see "Network.RTorrent.Action".
 -}
 
-{-# LANGUAGE DeriveGeneric #-}
-
 module Network.RTorrent.Tracker (
     TrackerId (..)
   , TrackerType (..)
@@ -30,7 +28,6 @@ module Network.RTorrent.Tracker (
 ) where
 
 import Control.Applicative
-import GHC.Generics (Generic)
 
 import qualified Data.Map as M
 import qualified Data.Vector as V
@@ -58,7 +55,7 @@ data TrackerType =
       TrackerHTTP
     | TrackerUDP
     | TrackerDHT
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq)
 
 instance Enum TrackerType where
     toEnum 1 = TrackerHTTP

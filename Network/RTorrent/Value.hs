@@ -1,7 +1,6 @@
 {-# LANGUAGE TypeFamilies, FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE DeriveGeneric #-}
 
 {-|
 Module      : Value
@@ -28,7 +27,6 @@ import Data.Aeson (ToJSON, FromJSON)
 import qualified Data.Aeson as A
 import qualified Data.Aeson.KeyMap as AK
 import Data.Scientific
-import GHC.Generics (Generic)
 
 -- | ExceptT with an error message.
 type Err m a = ExceptT String m a
@@ -45,7 +43,7 @@ data Value = ValueArray !ValueVector |
              ValueInt !Int |
              ValueString !T.Text | 
              ValueStruct !KeyMap
-    deriving (Show, Eq, Generic)
+    deriving (Show, Eq)
 
 instance ToJSON Value where
     toJSON (ValueArray a) = A.Array (V.map A.toJSON a)
