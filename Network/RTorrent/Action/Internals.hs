@@ -44,9 +44,12 @@ import Network.RTorrent.Value
 --
 -- @a@ is the return type.
 data Action i a = Action {
-          actionCmds :: V.Vector (T.Text, V.Vector Param)                -- ^ Commands and parameters
-        , actionParse :: forall m. (Monad m, MonadFail m) => Value -> m a -- ^ Value parser
-        , actionIndex :: i -- ^ Index at which the action is executed.
+          actionCmds :: V.Vector (T.Text, V.Vector Param)                
+          -- ^ Commands and parameters
+        , actionParse :: forall m. (Monad m, MonadFail m) => Value -> m a 
+          -- ^ Value parser
+        , actionIndex :: i
+          -- ^ Index at which the action is executed.
     }
 
 -- | Wrapper to get monoid and applicative instances.
@@ -67,7 +70,7 @@ newtype ActionB i a = ActionB { runActionB :: i -> Action i a}
 --
 -- <https://github.com/rakshasa/rtorrent/wiki/rTorrent-0.9-Comprehensive-Command-list-%28WIP%29>
 --
--- but to get a proper explanation for the commands a dive into source code for RTorrent is possibly needed.
+-- but to get a proper explanation for the commands a dive into the source code of RTorrent is possibly needed.
 simpleAction :: RpcType a =>
        T.Text
     -> [Param]
@@ -158,7 +161,11 @@ infixr 6 <+>
 (<+>) :: (i -> Action i a) -> (i -> Action i b) -> i -> Action i (a :*: b)
 a <+> b = runActionB $ (:*:) <$> ActionB a <*> ActionB b
 
-data AllAction i a = AllAction i T.Text (V.Vector Param) (i -> Action i a)
+data AllAction i a = AllAction 
+    i  -- ^ Dummy index
+    T.Text -- ^ Function call
+    (V.Vector Param) -- ^ Parameters 
+    (i -> Action i a) -- ^ Action at each index
 
 makeMultiCallStr :: [(String, [Param])] -> [String]
 makeMultiCallStr = ("" :)
@@ -178,6 +185,7 @@ makeMultiCall = V.map (\(cmd, params) -> cmd <> "=" <> makeList params)
     makeList :: Show a => V.Vector a -> T.Text
     makeList = T.cons '{' . flip T.snoc '}' . T.intercalate "," . V.toList . V.map (T.pack . show)
 
+-- | Turn an 'AllAction' to a regular 'Action'.
 allToMulti :: AllAction i a -> j -> Action j (V.Vector a)
 allToMulti (AllAction emptyId multicall filt action) j =
     Action {

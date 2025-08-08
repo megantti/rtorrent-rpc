@@ -52,11 +52,12 @@ sets their priorities to high.
 {&#45;\# LANGUAGE TypeOperators \#&#45;}
 
 import Control.Monad
-import Network.RTorrent
 import Data.Vector (Vector)
 import qualified Data.Vector as V
 import Data.Text (Text)
 import qualified Data.Text as T
+
+import Network.RTorrent
 
 -- This is an action, and they can be combined with ('<+>').
 torrentInfo :: 'TorrentId'
@@ -133,33 +134,25 @@ import Network.RTorrent.JSONRPC
 import Network.RTorrent.Query
 import qualified Network.RTorrent.Command.Internals as C
 
--- import Text.Show.Pretty (ppShow)
-
 callRTorrentRaw :: String -> C.RTMethodCall -> ExceptT String IO Value
 callRTorrentRaw addr calls = do
     let call = jsonRPCcall calls
-    --liftIO . LB.putStr $ encodePretty call
     response <- ExceptT $ query addr call
-    --response <- liftEither $ A.eitherDecode content
-    --liftIO . LB.putStr $ encodePretty response
-    --liftIO $ putStrLn "\njsonRPCdecode: "
-    --liftIO . putStrLn . ppShow $ jsonRPCdecode response
     liftEither $ jsonRPCdecode response
 
 -- | Call RTorrent with a command.
 -- Only one connection is opened even when combining commands
 -- for example by using ':*:' or lists.
 --
--- The address can be currently be of the forms:
+-- Examples of currently supported address types: 
 --
---     * tcp:\/\/localhost:5000                      
---     * unix:\/\/~\/.rtorrent\/.session\/rpc.socket    
+--     * @tcp:\/\/localhost:5000@                      
+--     * @unix:\/\/~\/.rtorrent\/.session\/rpc.socket@ 
 callRTorrent :: Command a =>
     String   -- ^ Address
     -> a     -- ^ Command
     -> IO (Either String (Ret a))
 callRTorrent addr command = do
-    --print (C.commandCall command)
     runExceptT (do
         ret <- callRTorrentRaw addr (C.commandCall command)
         C.commandValue command ret)

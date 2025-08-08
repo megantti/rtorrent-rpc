@@ -22,7 +22,6 @@ module Network.RTorrent.Command.Internals (
     , parseSingle
     , parseValue
     , getArray
-    , getArray'
     , single
 ) where
 
@@ -67,10 +66,6 @@ getArray :: (Monad m, MonadFail m) => Value -> m (V.Vector Value)
 getArray (ValueArray ar) = return ar
 getArray _ = fail "getArray in Network.RTorrent.Commands failed"
 
-getArray' :: Value -> V.Vector Value
-getArray' (ValueArray ar) = ar
-getArray' _ = error "getArray' in Network.RTorrent.Commands failed"
-
 -- | Extract a value from a singleton array.
 single :: (Monad m, MonadFail m)  => Value -> m Value
 single (ValueArray ar) = if V.null ar 
@@ -78,10 +73,11 @@ single (ValueArray ar) = if V.null ar
         else return $ V.head ar
 single v = fail $ "Failed to match a singleton array, got: " ++ show v
 
+-- | Try to parse a 'Value' as any 'RpcType a'.
 parseValue :: (Monad m, MonadFail m, RpcType a) => Value -> m a
 parseValue = handleError (\e -> fail $ "parseValue failed: " ++ e) . fromValue
 
--- | Parse a value wrapped in a singleton array.
+-- | Parse a 'Value' wrapped in a singleton array.
 parseSingle :: (Monad m, MonadFail m, RpcType a) => Value -> m a
 parseSingle = parseValue <=< single
 
